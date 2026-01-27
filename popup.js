@@ -26,7 +26,17 @@ function blankOutputs() {
   $("followup_neutral").textContent = "";
   $("followup_assertive").textContent = "";
   $("reminders").textContent = "";
+
+  // system mode fields
+  $("sys_mode").textContent = "—";
+  $("sys_health").textContent = "—";
+  $("reasoning_tags").textContent = "";
+  $("next_actions").textContent = "";
+  $("ghost_busters").textContent = "";
+  const ghostCard = document.getElementById("ghostCard");
+  if (ghostCard) ghostCard.style.display = "none";
 }
+
 
 function setOutputs(out) {
   $("followup_best").textContent = out.followup_best || "";
