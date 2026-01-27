@@ -328,6 +328,59 @@ async function generate() {
     setStatus("Network error. Check console.");
   }
 }
+function buildFollowupsPack() {
+  const best = $("followup_best").textContent.trim();
+  const soft = $("followup_soft").textContent.trim();
+  const neutral = $("followup_neutral").textContent.trim();
+  const assertive = $("followup_assertive").textContent.trim();
+
+  const parts = [];
+  if (best) parts.push(`BEST:\n${best}`);
+  if (soft) parts.push(`\nSOFT:\n${soft}`);
+  if (neutral) parts.push(`\nNEUTRAL:\n${neutral}`);
+  if (assertive) parts.push(`\nASSERTIVE:\n${assertive}`);
+
+  return parts.join("\n");
+}
+
+function buildActionsPack() {
+  const reminders = $("reminders").textContent.trim();
+  const nextActions = $("next_actions").textContent.trim();
+  const tags = $("reasoning_tags").textContent.trim();
+
+  const parts = [];
+  if (tags) parts.push(`TAGS:\n${tags}`);
+  if (reminders) parts.push(`\nREMINDERS:\n${reminders}`);
+  if (nextActions) parts.push(`\nNEXT ACTIONS:\n${nextActions}`);
+
+  // Ghost busters only if visible + present
+  const ghostCard = document.getElementById("ghostCard");
+  const ghost = $("ghost_busters").textContent.trim();
+  if (ghostCard && ghostCard.style.display !== "none" && ghost) {
+    parts.push(`\nGHOST BUSTERS:\n${ghost}`);
+  }
+
+  return parts.join("\n");
+}
+
+function buildEverythingPack() {
+  const mode = $("sys_mode").textContent.trim();
+  const health = $("sys_health").textContent.trim();
+
+  const header = [];
+  if (mode && mode !== "—") header.push(`MODE: ${mode}`);
+  if (health && health !== "—") header.push(`DEAL: ${health}`);
+
+  const parts = [];
+  if (header.length) parts.push(header.join(" | "));
+  const followups = buildFollowupsPack();
+  const actions = buildActionsPack();
+
+  if (followups) parts.push(followups);
+  if (actions) parts.push(actions);
+
+  return parts.join("\n\n");
+}
 
 // ---------- wiring ----------
 document.addEventListener("click", async (e) => {
@@ -343,6 +396,28 @@ document.addEventListener("click", async (e) => {
     await copyText(best);
     setStatus("Copied Best.");
   }
+
+    if (t?.id === "btnCopyFollowups") {
+    const pack = buildFollowupsPack();
+    if (!pack) return setStatus("No follow-ups to copy yet.");
+    await copyText(pack);
+    setStatus("Copied all follow-ups.");
+  }
+
+  if (t?.id === "btnCopyActions") {
+    const pack = buildActionsPack();
+    if (!pack) return setStatus("No reminders/actions to copy yet.");
+    await copyText(pack);
+    setStatus("Copied reminders + actions.");
+  }
+
+  if (t?.id === "btnCopyAll") {
+    const pack = buildEverythingPack();
+    if (!pack) return setStatus("Nothing to copy yet.");
+    await copyText(pack);
+    setStatus("Copied everything.");
+  }
+
 
   if (t?.id === "btnSelection") {
     try {
