@@ -19,6 +19,26 @@ function normalizeReminders(reminders) {
   if (!Array.isArray(reminders)) return "";
   return reminders.map(r => `- ${String(r)}`).join("\n");
 }
+function normalizeList(items) {
+  if (!Array.isArray(items)) return "";
+  return items.map(x => `- ${String(x)}`).join("\n");
+}
+
+function normalizeTags(tags) {
+  if (!Array.isArray(tags)) return "";
+  return tags.map(t => String(t)).join(", ");
+}
+
+function normalizeGhost(ghost) {
+  // ghost is {a,b} or strings; show as two bullets if present
+  if (!ghost) return "";
+  const a = String(ghost.a || "").trim();
+  const b = String(ghost.b || "").trim();
+  const parts = [];
+  if (a) parts.push(`- ${a}`);
+  if (b) parts.push(`- ${b}`);
+  return parts.join("\n");
+}
 
 function blankOutputs() {
   $("followup_best").textContent = "";
@@ -39,12 +59,26 @@ function blankOutputs() {
 
 
 function setOutputs(out) {
+  // existing
   $("followup_best").textContent = out.followup_best || "";
   $("followup_soft").textContent = out.followup_soft || "";
   $("followup_neutral").textContent = out.followup_neutral || "";
   $("followup_assertive").textContent = out.followup_assertive || "";
   $("reminders").textContent = normalizeReminders(out.reminders || []);
+
+  // system mode
+  $("sys_mode").textContent = out.mode || "—";
+  $("sys_health").textContent = out.deal_health || "—";
+  $("reasoning_tags").textContent = normalizeTags(out.reasoning_tags || []);
+  $("next_actions").textContent = normalizeList(out.next_actions || []);
+
+  const ghostText = normalizeGhost(out.ghost_busters || {});
+  $("ghost_busters").textContent = ghostText;
+
+  const ghostCard = document.getElementById("ghostCard");
+  if (ghostCard) ghostCard.style.display = (out.mode === "ghost" && ghostText) ? "block" : "none";
 }
+
 
 // ---------- persistence ----------
 const STORAGE_KEY = "followup_popup_state_v2";
@@ -72,14 +106,20 @@ function getStateFromUI() {
     include_reminders: $("include_reminders").checked,
 
     outputs: {
-      followup_best: $("followup_best").textContent || "",
-      followup_soft: $("followup_soft").textContent || "",
-      followup_neutral: $("followup_neutral").textContent || "",
-      followup_assertive: $("followup_assertive").textContent || "",
-      reminders: $("reminders").textContent || "",
-    }
-  };
+  followup_best: $("followup_best").textContent || "",
+  followup_soft: $("followup_soft").textContent || "",
+  followup_neutral: $("followup_neutral").textContent || "",
+  followup_assertive: $("followup_assertive").textContent || "",
+  reminders: $("reminders").textContent || "",
+
+  sys_mode: $("sys_mode").textContent || "—",
+  sys_health: $("sys_health").textContent || "—",
+  reasoning_tags: $("reasoning_tags").textContent || "",
+  next_actions: $("next_actions").textContent || "",
+  ghost_busters: $("ghost_busters").textContent || "",
+  ghost_visible: (document.getElementById("ghostCard")?.style.display || "none"),
 }
+
 
 function applyStateToUI(state) {
   if (!state) return;
@@ -109,6 +149,17 @@ function applyStateToUI(state) {
     $("followup_neutral").textContent = state.outputs.followup_neutral || "";
     $("followup_assertive").textContent = state.outputs.followup_assertive || "";
     $("reminders").textContent = state.outputs.reminders || "";
+    $("sys_mode").textContent = state.outputs.sys_mode || "—";
+    $("sys_health").textContent = state.outputs.sys_health || "—";
+    $("reasoning_tags").textContent = state.outputs.reasoning_tags || "";
+    $("next_actions").textContent = state.outputs.next_actions || "";
+    $("ghost_busters").textContent = state.outputs.ghost_busters || "";
+
+  const ghostCard = document.getElementById("ghostCard");
+  if (ghostCard) {
+    ghostCard.style.display = state.outputs.ghost_visible || "none";
+  }
+
   }
 }
 
@@ -322,12 +373,18 @@ document.addEventListener("click", async (e) => {
   const key = t?.dataset?.copy;
   if (key) {
     let text = "";
+  
     if (key === "reminders") text = $("reminders").textContent.trim();
+    else if (key === "next_actions") text = $("next_actions").textContent.trim();
+    else if (key === "reasoning_tags") text = $("reasoning_tags").textContent.trim();
+    else if (key === "ghost_busters") text = $("ghost_busters").textContent.trim();
     else text = $(key)?.textContent?.trim() || "";
+  
     if (!text) return setStatus("Nothing to copy.");
     await copyText(text);
     setStatus(`Copied ${key}.`);
-  }
+}
+
 });
 
 // init
