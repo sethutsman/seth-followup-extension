@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Seth Follow-Up Generator",
+  "version": "1.0.0",
+  "description": "Generate follow-up texts and reminders via your Cloudflare Worker.",
+  "action": {
+    "default_title": "Follow-Up",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ]
+}

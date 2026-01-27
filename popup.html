@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Follow-Up</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="row">
+      <button id="btnSelection">Use Selected Text</button>
+      <button id="btnScrape">Auto-Fill (Best Effort)</button>
+    </div>
+
+    <label>Stage</label>
+    <select id="stage">
+      <option value="">(optional)</option>
+      <option value="new-lead">New Lead</option>
+      <option value="appt-set">Appt Set</option>
+      <option value="show">Show</option>
+      <option value="numbers">Numbers</option>
+      <option value="unsold-show">Unsold Show</option>
+      <option value="unsold-td">Unsold TD</option>
+      <option value="unsold-numbers">Unsold Numbers</option>
+      <option value="sold">Sold</option>
+    </select>
+
+    <label>Customer (optional)</label>
+    <input id="customer" placeholder="John" />
+
+    <label>Vehicle (optional)</label>
+    <input id="vehicle" placeholder="2025 Bronco Outer Banks" />
+
+    <label>Lead source (optional)</label>
+    <input id="lead_source" placeholder="Facebook, Website, Phone Up, Walk-in..." />
+
+    <label>Budget (optional)</label>
+    <input id="budget" placeholder="$35k / under $500/mo / 40k OTD..." />
+
+    <label>Timeline (optional)</label>
+    <input id="timeline" placeholder="Today, this week, next month..." />
+
+    <label>Trade (optional)</label>
+    <input id="trade" placeholder="Yes - 2018 F-150 / No / Unsure" />
+
+    <label>Objections (optional)</label>
+    <textarea id="objections" rows="3" placeholder="Price, payment, spouse, credit, comparing, time..."></textarea>
+
+    <label>Days since last contact (optional)</label>
+    <input id="days_since" type="number" min="0" step="1" placeholder="0" />
+
+    <label>Lead’s last message (optional)</label>
+    <textarea id="last_message" rows="4" placeholder="Paste the customer’s last message…"></textarea>
+
+    <label>Last message was a question? (optional)</label>
+    <select id="last_was_question">
+      <option value="">(unknown)</option>
+      <option value="yes">yes</option>
+      <option value="no">no</option>
+    </select>
+
+    <label>Customer tone (optional)</label>
+    <select id="tone">
+      <option value="">(unknown)</option>
+      <option value="warm">warm</option>
+      <option value="neutral">neutral</option>
+      <option value="cold">cold</option>
+    </select>
+
+    <label>Raw Note (optional)</label>
+    <textarea id="raw_note" rows="6" placeholder="Paste notes, or use selected text…"></textarea>
+
+    <div class="row toggles">
+      <label><input type="checkbox" id="include_followup" checked> Include follow-up</label>
+      <label><input type="checkbox" id="include_reminders" checked> Include reminders</label>
+    </div>
+
+    <div class="row">
+      <button id="btnGenerate" class="primary">Generate</button>
+      <button id="btnCopyBest">Copy Best</button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="results">
+      <div class="card">
+        <div class="cardHeader">
+          <div>Best</div>
+          <button data-copy="followup_best">Copy</button>
+        </div>
+        <pre id="followup_best"></pre>
+      </div>
+
+      <div class="card">
+        <div class="cardHeader">
+          <div>Soft</div>
+          <button data-copy="followup_soft">Copy</button>
+        </div>
+        <pre id="followup_soft"></pre>
+      </div>
+
+      <div class="card">
+        <div class="cardHeader">
+          <div>Neutral</div>
+          <button data-copy="followup_neutral">Copy</button>
+        </div>
+        <pre id="followup_neutral"></pre>
+      </div>
+
+      <div class="card">
+        <div class="cardHeader">
+          <div>Assertive</div>
+          <button data-copy="followup_assertive">Copy</button>
+        </div>
+        <pre id="followup_assertive"></pre>
+      </div>
+
+      <div class="card">
+        <div class="cardHeader">
+          <div>Reminders</div>
+          <button data-copy="reminders">Copy</button>
+        </div>
+        <pre id="reminders"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

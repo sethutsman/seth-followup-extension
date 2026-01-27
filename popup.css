@@ -1,0 +1,13 @@
+body { margin: 0; font-family: Arial, sans-serif; }
+.wrap { padding: 10px; width: 360px; box-sizing: border-box; }
+label { display: block; margin-top: 10px; font-size: 12px; opacity: 0.8; }
+input, textarea, select { width: 100%; box-sizing: border-box; padding: 6px; margin-top: 4px; }
+.row { display: flex; gap: 8px; margin-top: 10px; }
+.row.toggles { justify-content: space-between; }
+button { padding: 6px 10px; cursor: pointer; }
+button.primary { flex: 1; font-weight: bold; }
+.status { margin-top: 8px; font-size: 12px; min-height: 16px; }
+.results { margin-top: 10px; display: grid; gap: 10px; }
+.card { border: 1px solid #ddd; border-radius: 6px; padding: 8px; }
+.cardHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+pre { white-space: pre-wrap; margin: 0; font-size: 12px; }
