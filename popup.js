@@ -386,12 +386,28 @@ function normalizeWorkerResponse(json) {
       followup_neutral: json.followup_neutral || "",
       followup_assertive: json.followup_assertive || "",
       reminders: Array.isArray(json.reminders) ? json.reminders : [],
+      mode: json.mode || json.sys_mode || "",
+      deal_health: json.deal_health || json.sys_health || "",
+      reasoning_tags: Array.isArray(json.reasoning_tags) ? json.reasoning_tags : [],
+      next_actions: Array.isArray(json.next_actions) ? json.next_actions : [],
+      ghost_busters: json.ghost_busters || {},
     };
   }
 
   // Legacy: {mode, options:[{label,text}]}
   if (json && Array.isArray(json.options)) {
-    const out = { followup_soft:"", followup_neutral:"", followup_assertive:"", followup_best:"", reminders:[] };
+    const out = {
+      followup_soft: "",
+      followup_neutral: "",
+      followup_assertive: "",
+      followup_best: "",
+      reminders: [],
+      mode: json.mode || json.sys_mode || "",
+      deal_health: json.deal_health || json.sys_health || "",
+      reasoning_tags: Array.isArray(json.reasoning_tags) ? json.reasoning_tags : [],
+      next_actions: Array.isArray(json.next_actions) ? json.next_actions : [],
+      ghost_busters: json.ghost_busters || {},
+    };
     for (const opt of json.options) {
       const label = String(opt?.label || "").toLowerCase();
       const t = String(opt?.text || "").trim();
