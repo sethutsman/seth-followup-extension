@@ -540,6 +540,27 @@ function buildEverythingPack() {
   return parts.join("\n\n");
 }
 
+function clearAllFields() {
+  const ids = [
+    "stage","customer","vehicle",
+    "lead_source","budget","timeline","trade","objections",
+    "days_since","last_message","last_was_question","tone","raw_note",
+  ];
+  ids.forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    if (el.tagName === "SELECT") {
+      el.value = "";
+    } else {
+      el.value = "";
+    }
+  });
+  $("include_followup").checked = true;
+  $("include_reminders").checked = true;
+  blankOutputs();
+  setStatus("Cleared.");
+}
+
 // ---------- wiring ----------
 document.addEventListener("click", async (e) => {
   const t = e.target;
@@ -574,6 +595,11 @@ document.addEventListener("click", async (e) => {
     if (!pack) return setStatus("Nothing to copy yet.");
     await copyText(pack);
     setStatus("Copied everything.");
+  }
+
+  if (t?.id === "btnClear") {
+    clearAllFields();
+    await saveState();
   }
 
 

@@ -28,6 +28,7 @@ input, textarea, select { width: 100%; box-sizing: border-box; padding: 6px; mar
 .row.toggles { justify-content: space-between; }
 button { padding: 6px 10px; cursor: pointer; }
 button.primary { flex: 1; font-weight: bold; }
+button.danger { background: #b3261e; border: 1px solid #8d1d16; color: #fff; }
 .status { margin-top: 8px; font-size: 12px; min-height: 16px; }
 .results { margin-top: 10px; display: grid; gap: 10px; }
 .card { border: 1px solid #ddd; border-radius: 6px; padding: 8px; }
