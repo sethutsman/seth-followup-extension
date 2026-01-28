@@ -8,3 +8,4 @@ Install (Chrome):
 IMPORTANT:
 - Set WORKER_URL in popup.js to the worker you want to call.
 - If 'Use Selected Text' doesn't work on a site, click the page first (Chrome needs focus).
+- 'Use Selected Text' supports both highlighted page text and selections inside text inputs/areas.
