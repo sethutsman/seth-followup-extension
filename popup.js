@@ -4,6 +4,19 @@ const WORKER_URL = "https://follow-up-bot.sethutsman.workers.dev/";
 
 // ---------- helpers ----------
 const $ = (id) => document.getElementById(id);
+const getText = (id) => $(id)?.textContent || "";
+const setText = (id, value) => {
+  const el = $(id);
+  if (el) el.textContent = value ?? "";
+};
+
+const OUTPUT_FIELDS = [
+  "followup_best",
+  "followup_soft",
+  "followup_neutral",
+  "followup_assertive",
+  "reminders",
+];
 
 function setStatus(msg) {
   const el = $("status");
@@ -41,18 +54,14 @@ function normalizeGhost(ghost) {
 }
 
 function blankOutputs() {
-  $("followup_best").textContent = "";
-  $("followup_soft").textContent = "";
-  $("followup_neutral").textContent = "";
-  $("followup_assertive").textContent = "";
-  $("reminders").textContent = "";
+  OUTPUT_FIELDS.forEach((id) => setText(id, ""));
 
   // system mode fields
-  $("sys_mode").textContent = "—";
-  $("sys_health").textContent = "—";
-  $("reasoning_tags").textContent = "";
-  $("next_actions").textContent = "";
-  $("ghost_busters").textContent = "";
+  setText("sys_mode", "—");
+  setText("sys_health", "—");
+  setText("reasoning_tags", "");
+  setText("next_actions", "");
+  setText("ghost_busters", "");
   const ghostCard = document.getElementById("ghostCard");
   if (ghostCard) ghostCard.style.display = "none";
 }
@@ -60,20 +69,20 @@ function blankOutputs() {
 
 function setOutputs(out) {
   // existing
-  $("followup_best").textContent = out.followup_best || "";
-  $("followup_soft").textContent = out.followup_soft || "";
-  $("followup_neutral").textContent = out.followup_neutral || "";
-  $("followup_assertive").textContent = out.followup_assertive || "";
-  $("reminders").textContent = normalizeReminders(out.reminders || []);
+  setText("followup_best", out.followup_best || "");
+  setText("followup_soft", out.followup_soft || "");
+  setText("followup_neutral", out.followup_neutral || "");
+  setText("followup_assertive", out.followup_assertive || "");
+  setText("reminders", normalizeReminders(out.reminders || []));
 
   // system mode
-  $("sys_mode").textContent = out.mode || "—";
-  $("sys_health").textContent = out.deal_health || "—";
-  $("reasoning_tags").textContent = normalizeTags(out.reasoning_tags || []);
-  $("next_actions").textContent = normalizeList(out.next_actions || []);
+  setText("sys_mode", out.mode || "—");
+  setText("sys_health", out.deal_health || "—");
+  setText("reasoning_tags", normalizeTags(out.reasoning_tags || []));
+  setText("next_actions", normalizeList(out.next_actions || []));
 
   const ghostText = normalizeGhost(out.ghost_busters || {});
-  $("ghost_busters").textContent = ghostText;
+  setText("ghost_busters", ghostText);
 
   const ghostCard = document.getElementById("ghostCard");
   if (ghostCard) ghostCard.style.display = (out.mode === "ghost" && ghostText) ? "block" : "none";
@@ -106,18 +115,20 @@ function getStateFromUI() {
     include_reminders: $("include_reminders").checked,
 
     outputs: {
-  followup_best: $("followup_best").textContent || "",
-  followup_soft: $("followup_soft").textContent || "",
-  followup_neutral: $("followup_neutral").textContent || "",
-  followup_assertive: $("followup_assertive").textContent || "",
-  reminders: $("reminders").textContent || "",
+      followup_best: getText("followup_best"),
+      followup_soft: getText("followup_soft"),
+      followup_neutral: getText("followup_neutral"),
+      followup_assertive: getText("followup_assertive"),
+      reminders: getText("reminders"),
 
-  sys_mode: $("sys_mode").textContent || "—",
-  sys_health: $("sys_health").textContent || "—",
-  reasoning_tags: $("reasoning_tags").textContent || "",
-  next_actions: $("next_actions").textContent || "",
-  ghost_busters: $("ghost_busters").textContent || "",
-  ghost_visible: (document.getElementById("ghostCard")?.style.display || "none"),
+      sys_mode: getText("sys_mode") || "—",
+      sys_health: getText("sys_health") || "—",
+      reasoning_tags: getText("reasoning_tags"),
+      next_actions: getText("next_actions"),
+      ghost_busters: getText("ghost_busters"),
+      ghost_visible: (document.getElementById("ghostCard")?.style.display || "none"),
+    },
+  };
 }
 
 
@@ -144,22 +155,21 @@ function applyStateToUI(state) {
   $("include_reminders").checked = state.include_reminders ?? true;
 
   if (state.outputs) {
-    $("followup_best").textContent = state.outputs.followup_best || "";
-    $("followup_soft").textContent = state.outputs.followup_soft || "";
-    $("followup_neutral").textContent = state.outputs.followup_neutral || "";
-    $("followup_assertive").textContent = state.outputs.followup_assertive || "";
-    $("reminders").textContent = state.outputs.reminders || "";
-    $("sys_mode").textContent = state.outputs.sys_mode || "—";
-    $("sys_health").textContent = state.outputs.sys_health || "—";
-    $("reasoning_tags").textContent = state.outputs.reasoning_tags || "";
-    $("next_actions").textContent = state.outputs.next_actions || "";
-    $("ghost_busters").textContent = state.outputs.ghost_busters || "";
+    setText("followup_best", state.outputs.followup_best || "");
+    setText("followup_soft", state.outputs.followup_soft || "");
+    setText("followup_neutral", state.outputs.followup_neutral || "");
+    setText("followup_assertive", state.outputs.followup_assertive || "");
+    setText("reminders", state.outputs.reminders || "");
+    setText("sys_mode", state.outputs.sys_mode || "—");
+    setText("sys_health", state.outputs.sys_health || "—");
+    setText("reasoning_tags", state.outputs.reasoning_tags || "");
+    setText("next_actions", state.outputs.next_actions || "");
+    setText("ghost_busters", state.outputs.ghost_busters || "");
 
-  const ghostCard = document.getElementById("ghostCard");
-  if (ghostCard) {
-    ghostCard.style.display = state.outputs.ghost_visible || "none";
-  }
-
+    const ghostCard = document.getElementById("ghostCard");
+    if (ghostCard) {
+      ghostCard.style.display = state.outputs.ghost_visible || "none";
+    }
   }
 }
 
@@ -204,18 +214,143 @@ async function execInTab(func, args = []) {
   return results?.[0]?.result;
 }
 
+async function execInAllFrames(func, args = []) {
+  const tab = await getActiveTab();
+  if (!tab?.id) throw new Error("No active tab.");
+  const results = await chrome.scripting.executeScript({
+    target: { tabId: tab.id, allFrames: true },
+    func,
+    args
+  });
+  return results || [];
+}
+
+function pickBestSelection(results, preferFrameId) {
+  const withFrame = results.map((r) => ({
+    value: String(r?.result?.value ?? r?.result ?? "").trim(),
+    frameId: r?.result?.frameId || "",
+  }));
+  const filtered = preferFrameId
+    ? withFrame.filter((entry) => entry.frameId === preferFrameId && entry.value)
+    : withFrame.filter((entry) => entry.value);
+  const cleaned = filtered.length ? filtered : withFrame.filter((entry) => entry.value);
+  if (!cleaned.length) return "";
+  cleaned.sort((a, b) => b.value.length - a.value.length);
+  return cleaned[0].value;
+}
+
 async function getSelectionText() {
-  return execInTab(() => window.getSelection ? String(window.getSelection().toString() || "") : "");
+  const results = await execInAllFrames(() => {
+    const selection = window.getSelection ? String(window.getSelection().toString() || "") : "";
+    if (selection) return selection;
+
+    const active = document.activeElement;
+    const isInput = active && active.tagName === "INPUT";
+    const isTextArea = active && active.tagName === "TEXTAREA";
+    if (isInput || isTextArea) {
+      const type = isInput ? (active.getAttribute("type") || "text").toLowerCase() : "textarea";
+      const supportsSelection = isTextArea || ["text", "search", "url", "email", "tel", "number"].includes(type);
+      if (supportsSelection && typeof active.selectionStart === "number" && typeof active.selectionEnd === "number") {
+        return String(active.value || "").slice(active.selectionStart, active.selectionEnd);
+      }
+    }
+
+    return "";
+  });
+  return pickBestSelection(results, "cardashboardframe");
 }
 
 // Best-effort scrape (you'll likely refine selectors for VinSolutions later)
 async function scrapeBestEffort() {
-  return execInTab(() => {
-    const text = (sel) => document.querySelector(sel)?.textContent?.trim() || "";
-    const customer = text("[data-testid='customer-name']") || text(".customerName") || "";
-    const vehicle = text("[data-testid='vehicle']") || text(".vehicle") || "";
-    return { customer, vehicle };
-  });
+  const iframeSelector = "#cardashboardframe";
+  const selectors = {
+    customer: [
+      "#ContentPlaceHolder1_m_CustomerAndTaskInfo_m_CustomerInfo__CustomerName",
+      "[data-testid='customer-name']",
+      ".customerName",
+      "[name*='customer']",
+      "[id*='customer']",
+      "[aria-label*='Customer']",
+    ],
+    vehicle: [
+      "#ActiveLeadPanelWONotesAndHistory1_m_VehicleInfo",
+      "[data-testid='vehicle']",
+      ".vehicle",
+      "[name*='vehicle']",
+      "[id*='vehicle']",
+      "[aria-label*='Vehicle']",
+    ],
+  };
+
+  const fromTopFrame = await execInTab((frameSel, selectorMap) => {
+    const readText = (el) => {
+      if (!el) return "";
+      if (typeof el.value === "string") return el.value.trim();
+      return el.textContent?.trim() || "";
+    };
+    const fromSelectors = (root, selectorList) => {
+      for (const sel of selectorList) {
+        const value = readText(root.querySelector(sel));
+        if (value) return value;
+      }
+      return "";
+    };
+    const iframe = document.querySelector(frameSel);
+    if (!iframe?.contentDocument) return null;
+    const root = iframe.contentDocument;
+    return {
+      customer: fromSelectors(root, selectorMap.customer),
+      vehicle: fromSelectors(root, selectorMap.vehicle),
+    };
+  }, [iframeSelector, selectors]);
+
+  if (fromTopFrame?.customer || fromTopFrame?.vehicle) {
+    return {
+      customer: fromTopFrame.customer || "",
+      vehicle: fromTopFrame.vehicle || "",
+    };
+  }
+
+  const results = await execInAllFrames((frameSel, selectorMap) => {
+    const readText = (el) => {
+      if (!el) return "";
+      if (typeof el.value === "string") return el.value.trim();
+      return el.textContent?.trim() || "";
+    };
+    const fromSelectors = (selectorList) => {
+      for (const sel of selectorList) {
+        const value = readText(document.querySelector(sel));
+        if (value) return value;
+      }
+      return "";
+    };
+    return {
+      customer: fromSelectors(selectorMap.customer),
+      vehicle: fromSelectors(selectorMap.vehicle),
+      frameId: window.frameElement?.id || "",
+    };
+  }, [iframeSelector, selectors]);
+
+  const trimmed = results.map((r) => r?.result || {});
+  const pickValue = (key) => {
+    const candidates = trimmed
+      .map((entry) => ({
+        value: String(entry?.[key] || "").trim(),
+        frameId: entry?.frameId || "",
+      }))
+      .filter((entry) => entry.value)
+      .filter((entry) => entry.value.toLowerCase() !== "customers");
+    const preferred = candidates.filter((entry) => entry.frameId === "cardashboardframe");
+    const pool = preferred.length ? preferred : candidates;
+    if (!pool.length) return "";
+    pool.sort((a, b) => b.value.length - a.value.length);
+    return pool[0].value;
+  };
+
+  return {
+    customer: pickValue("customer"),
+    vehicle: pickValue("vehicle"),
+  };
 }
 
 // ---------- worker response normalization ----------
