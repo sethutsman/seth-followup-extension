@@ -266,6 +266,8 @@ async function scrapeBestEffort() {
   const selectors = {
     customer: [
       "#ContentPlaceHolder1_m_CustomerAndTaskInfo_m_CustomerInfo__CustomerName",
+      "#ContentPlaceHolder1_m_FirstName",
+      "#ContentPlaceHolder1_m_LastName",
       "[data-testid='customer-name']",
       ".customerName",
       "[name*='customer']",
@@ -284,6 +286,8 @@ async function scrapeBestEffort() {
   const strictSelectors = {
     customer: "#ContentPlaceHolder1_m_CustomerAndTaskInfo_m_CustomerInfo__CustomerName",
     vehicle: "#ActiveLeadPanelWONotesAndHistory1_m_VehicleInfo",
+    firstName: "#ContentPlaceHolder1_m_FirstName",
+    lastName: "#ContentPlaceHolder1_m_LastName",
   };
 
   const fromTopFrame = await execInTab((frameSel, selectorMap, strictMap) => {
@@ -307,8 +311,11 @@ async function scrapeBestEffort() {
     const iframe = document.querySelector(frameSel);
     if (!iframe?.contentDocument) return null;
     const root = iframe.contentDocument;
+    const firstName = readText(root.querySelector(strictMap.firstName));
+    const lastName = readText(root.querySelector(strictMap.lastName));
+    const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
     return {
-      customer: fromSelectors(root, selectorMap.customer),
+      customer: fullName || fromSelectors(root, selectorMap.customer),
       vehicle: fromSelectors(root, selectorMap.vehicle),
     };
   }, [iframeSelector, selectors, strictSelectors]);
@@ -337,8 +344,11 @@ async function scrapeBestEffort() {
       }
       return "";
     };
+    const firstName = readText(document.querySelector(strictMap.firstName));
+    const lastName = readText(document.querySelector(strictMap.lastName));
+    const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
     return {
-      customer: fromSelectors(selectorMap.customer, strictMap.customer),
+      customer: fullName || fromSelectors(selectorMap.customer, strictMap.customer),
       vehicle: fromSelectors(selectorMap.vehicle, strictMap.vehicle),
       frameId: window.frameElement?.id || "",
     };
