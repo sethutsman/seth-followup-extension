@@ -272,6 +272,7 @@ async function scrapeBestEffort() {
     };
 
     const customer = fromSelectors([
+      "#ContentPlaceHolder1_m_CustomerAndTaskInfo_m_CustomerInfo__CustomerName",
       "[data-testid='customer-name']",
       ".customerName",
       "[name*='customer']",
@@ -279,6 +280,7 @@ async function scrapeBestEffort() {
       "[aria-label*='Customer']",
     ]);
     const vehicle = fromSelectors([
+      "#ActiveLeadPanelWONotesAndHistory1_m_VehicleDetails > table > tbody > tr:nth-child(2) > td",
       "[data-testid='vehicle']",
       ".vehicle",
       "[name*='vehicle']",
