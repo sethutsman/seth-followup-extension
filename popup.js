@@ -281,14 +281,23 @@ async function scrapeBestEffort() {
       "[aria-label*='Vehicle']",
     ],
   };
+  const strictSelectors = {
+    customer: "#ContentPlaceHolder1_m_CustomerAndTaskInfo_m_CustomerInfo__CustomerName",
+    vehicle: "#ActiveLeadPanelWONotesAndHistory1_m_VehicleInfo",
+  };
 
-  const fromTopFrame = await execInTab((frameSel, selectorMap) => {
+  const fromTopFrame = await execInTab((frameSel, selectorMap, strictMap) => {
     const readText = (el) => {
       if (!el) return "";
       if (typeof el.value === "string") return el.value.trim();
       return el.textContent?.trim() || "";
     };
     const fromSelectors = (root, selectorList) => {
+      const strict = selectorList[0];
+      const strictNode = root.querySelector(strict);
+      if (strictNode) {
+        return readText(strictNode);
+      }
       for (const sel of selectorList) {
         const value = readText(root.querySelector(sel));
         if (value) return value;
@@ -302,7 +311,7 @@ async function scrapeBestEffort() {
       customer: fromSelectors(root, selectorMap.customer),
       vehicle: fromSelectors(root, selectorMap.vehicle),
     };
-  }, [iframeSelector, selectors]);
+  }, [iframeSelector, selectors, strictSelectors]);
 
   if (fromTopFrame?.customer || fromTopFrame?.vehicle) {
     return {
@@ -311,13 +320,17 @@ async function scrapeBestEffort() {
     };
   }
 
-  const results = await execInAllFrames((frameSel, selectorMap) => {
+  const results = await execInAllFrames((frameSel, selectorMap, strictMap) => {
     const readText = (el) => {
       if (!el) return "";
       if (typeof el.value === "string") return el.value.trim();
       return el.textContent?.trim() || "";
     };
-    const fromSelectors = (selectorList) => {
+    const fromSelectors = (selectorList, strictSelector) => {
+      const strictNode = strictSelector ? document.querySelector(strictSelector) : null;
+      if (strictNode) {
+        return readText(strictNode);
+      }
       for (const sel of selectorList) {
         const value = readText(document.querySelector(sel));
         if (value) return value;
@@ -325,11 +338,11 @@ async function scrapeBestEffort() {
       return "";
     };
     return {
-      customer: fromSelectors(selectorMap.customer),
-      vehicle: fromSelectors(selectorMap.vehicle),
+      customer: fromSelectors(selectorMap.customer, strictMap.customer),
+      vehicle: fromSelectors(selectorMap.vehicle, strictMap.vehicle),
       frameId: window.frameElement?.id || "",
     };
-  }, [iframeSelector, selectors]);
+  }, [iframeSelector, selectors, strictSelectors]);
 
   const trimmed = results.map((r) => r?.result || {});
   const pickValue = (key) => {
