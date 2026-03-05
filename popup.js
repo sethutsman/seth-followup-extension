@@ -15,7 +15,6 @@ const OUTPUT_FIELDS = [
   "followup_soft",
   "followup_neutral",
   "followup_assertive",
-  "reminders",
 ];
 
 // All input field IDs, in order
@@ -23,9 +22,9 @@ const INPUT_FIELDS = [
   "stage", "customer", "vehicle",
   "lead_source", "budget", "timeline", "trade", "objections",
   "days_since", "last_message", "last_was_question", "tone", "raw_note",
-  "include_followup", "include_reminders",
+  "include_followup",
 ];
-const CHECKBOX_FIELDS = new Set(["include_followup", "include_reminders"]);
+const CHECKBOX_FIELDS = new Set(["include_followup"]);
 
 function setStatus(msg) {
   const el = $("status");
@@ -78,7 +77,6 @@ function setOutputs(out) {
   setText("followup_soft", out.followup_soft || "");
   setText("followup_neutral", out.followup_neutral || "");
   setText("followup_assertive", out.followup_assertive || "");
-  setText("reminders", normalizeList(out.reminders || []));
   setText("sys_mode", out.mode || "—");
   setText("sys_health", out.deal_health || "—");
   setText("reasoning_tags", normalizeTags(out.reasoning_tags || []));
@@ -106,7 +104,6 @@ function getStateFromUI() {
     followup_soft: getText("followup_soft"),
     followup_neutral: getText("followup_neutral"),
     followup_assertive: getText("followup_assertive"),
-    reminders: getText("reminders"),
     sys_mode: getText("sys_mode") || "—",
     sys_health: getText("sys_health") || "—",
     reasoning_tags: getText("reasoning_tags"),
@@ -137,7 +134,6 @@ function applyStateToUI(state) {
     setText("followup_soft", o.followup_soft || "");
     setText("followup_neutral", o.followup_neutral || "");
     setText("followup_assertive", o.followup_assertive || "");
-    setText("reminders", o.reminders || "");
     setText("sys_mode", o.sys_mode || "—");
     setText("sys_health", o.sys_health || "—");
     setText("reasoning_tags", o.reasoning_tags || "");
@@ -245,13 +241,12 @@ function normalizeWorkerResponse(json) {
       followup_soft: json.followup_soft || "",
       followup_neutral: json.followup_neutral || "",
       followup_assertive: json.followup_assertive || "",
-      reminders: Array.isArray(json.reminders) ? json.reminders : [],
     };
   }
 
   // Legacy: {mode, options:[{label,text}]}
   if (json && Array.isArray(json.options)) {
-    const out = { followup_soft: "", followup_neutral: "", followup_assertive: "", followup_best: "", reminders: [] };
+    const out = { followup_soft: "", followup_neutral: "", followup_assertive: "", followup_best: "" };
     for (const opt of json.options) {
       const label = String(opt?.label || "").toLowerCase();
       const t = String(opt?.text || "").trim();
@@ -262,7 +257,6 @@ function normalizeWorkerResponse(json) {
       else if (label.includes("assert")) out.followup_assertive = t;
     }
     if (!out.followup_best) out.followup_best = out.followup_neutral || out.followup_soft || out.followup_assertive || "";
-    out.reminders = Array.isArray(json.reminders) ? json.reminders : [];
     return out;
   }
 
@@ -303,7 +297,6 @@ async function generate() {
     tone: $("tone").value.trim(),
 
     include_followup: $("include_followup").checked,
-    include_reminders: $("include_reminders").checked,
   };
 
   console.log("PAYLOAD", payload);
@@ -363,13 +356,11 @@ function buildFollowupsPack() {
 }
 
 function buildActionsPack() {
-  const reminders = getText("reminders").trim();
   const nextActions = getText("next_actions").trim();
   const tags = getText("reasoning_tags").trim();
 
   const parts = [];
   if (tags) parts.push(`TAGS:\n${tags}`);
-  if (reminders) parts.push(`\nREMINDERS:\n${reminders}`);
   if (nextActions) parts.push(`\nNEXT ACTIONS:\n${nextActions}`);
 
   // Ghost busters only if visible + present
