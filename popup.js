@@ -18,6 +18,15 @@ const OUTPUT_FIELDS = [
   "reminders",
 ];
 
+// All input field IDs, in order
+const INPUT_FIELDS = [
+  "stage", "customer", "vehicle",
+  "lead_source", "budget", "timeline", "trade", "objections",
+  "days_since", "last_message", "last_was_question", "tone", "raw_note",
+  "include_followup", "include_reminders",
+];
+const CHECKBOX_FIELDS = new Set(["include_followup", "include_reminders"]);
+
 function setStatus(msg) {
   const el = $("status");
   if (el) el.textContent = msg || "";
@@ -28,10 +37,6 @@ async function copyText(text) {
   await navigator.clipboard.writeText(text);
 }
 
-function normalizeReminders(reminders) {
-  if (!Array.isArray(reminders)) return "";
-  return reminders.map(r => `- ${String(r)}`).join("\n");
-}
 function normalizeList(items) {
   if (!Array.isArray(items)) return "";
   return items.map(x => `- ${String(x)}`).join("\n");
@@ -53,29 +58,27 @@ function normalizeGhost(ghost) {
   return parts.join("\n");
 }
 
+function setGhostVisible(visible) {
+  const ghostCard = $("ghostCard");
+  if (ghostCard) ghostCard.style.display = visible ? "block" : "none";
+}
+
 function blankOutputs() {
   OUTPUT_FIELDS.forEach((id) => setText(id, ""));
-
-  // system mode fields
   setText("sys_mode", "—");
   setText("sys_health", "—");
   setText("reasoning_tags", "");
   setText("next_actions", "");
   setText("ghost_busters", "");
-  const ghostCard = document.getElementById("ghostCard");
-  if (ghostCard) ghostCard.style.display = "none";
+  setGhostVisible(false);
 }
 
-
 function setOutputs(out) {
-  // existing
   setText("followup_best", out.followup_best || "");
   setText("followup_soft", out.followup_soft || "");
   setText("followup_neutral", out.followup_neutral || "");
   setText("followup_assertive", out.followup_assertive || "");
-  setText("reminders", normalizeReminders(out.reminders || []));
-
-  // system mode
+  setText("reminders", normalizeList(out.reminders || []));
   setText("sys_mode", out.mode || "—");
   setText("sys_health", out.deal_health || "—");
   setText("reasoning_tags", normalizeTags(out.reasoning_tags || []));
@@ -83,9 +86,7 @@ function setOutputs(out) {
 
   const ghostText = normalizeGhost(out.ghost_busters || {});
   setText("ghost_busters", ghostText);
-
-  const ghostCard = document.getElementById("ghostCard");
-  if (ghostCard) ghostCard.style.display = (out.mode === "ghost" && ghostText) ? "block" : "none";
+  setGhostVisible(out.mode === "ghost" && !!ghostText);
 }
 
 
@@ -93,83 +94,56 @@ function setOutputs(out) {
 const STORAGE_KEY = "followup_popup_state_v2";
 
 function getStateFromUI() {
-  return {
-    stage: $("stage").value || "",
-    customer: $("customer").value || "",
-    vehicle: $("vehicle").value || "",
+  const state = {};
+  for (const id of INPUT_FIELDS) {
+    const el = $(id);
+    if (!el) continue;
+    state[id] = CHECKBOX_FIELDS.has(id) ? el.checked : (el.value || "");
+  }
 
-    lead_source: $("lead_source").value || "",
-    budget: $("budget").value || "",
-    timeline: $("timeline").value || "",
-    trade: $("trade").value || "",
-    objections: $("objections").value || "",
-
-    days_since: $("days_since").value || "",
-    last_message: $("last_message").value || "",
-    last_was_question: $("last_was_question").value || "",
-    tone: $("tone").value || "",
-
-    raw_note: $("raw_note").value || "",
-
-    include_followup: $("include_followup").checked,
-    include_reminders: $("include_reminders").checked,
-
-    outputs: {
-      followup_best: getText("followup_best"),
-      followup_soft: getText("followup_soft"),
-      followup_neutral: getText("followup_neutral"),
-      followup_assertive: getText("followup_assertive"),
-      reminders: getText("reminders"),
-
-      sys_mode: getText("sys_mode") || "—",
-      sys_health: getText("sys_health") || "—",
-      reasoning_tags: getText("reasoning_tags"),
-      next_actions: getText("next_actions"),
-      ghost_busters: getText("ghost_busters"),
-      ghost_visible: (document.getElementById("ghostCard")?.style.display || "none"),
-    },
+  state.outputs = {
+    followup_best: getText("followup_best"),
+    followup_soft: getText("followup_soft"),
+    followup_neutral: getText("followup_neutral"),
+    followup_assertive: getText("followup_assertive"),
+    reminders: getText("reminders"),
+    sys_mode: getText("sys_mode") || "—",
+    sys_health: getText("sys_health") || "—",
+    reasoning_tags: getText("reasoning_tags"),
+    next_actions: getText("next_actions"),
+    ghost_busters: getText("ghost_busters"),
+    ghost_visible: ($("ghostCard")?.style.display || "none"),
   };
-}
 
+  return state;
+}
 
 function applyStateToUI(state) {
   if (!state) return;
 
-  $("stage").value = state.stage ?? "";
-  $("customer").value = state.customer ?? "";
-  $("vehicle").value = state.vehicle ?? "";
-
-  $("lead_source").value = state.lead_source ?? "";
-  $("budget").value = state.budget ?? "";
-  $("timeline").value = state.timeline ?? "";
-  $("trade").value = state.trade ?? "";
-  $("objections").value = state.objections ?? "";
-
-  $("days_since").value = state.days_since ?? "";
-  $("last_message").value = state.last_message ?? "";
-  $("last_was_question").value = state.last_was_question ?? "";
-  $("tone").value = state.tone ?? "";
-  $("raw_note").value = state.raw_note ?? "";
-
-  $("include_followup").checked = state.include_followup ?? true;
-  $("include_reminders").checked = state.include_reminders ?? true;
+  for (const id of INPUT_FIELDS) {
+    const el = $(id);
+    if (!el) continue;
+    if (CHECKBOX_FIELDS.has(id)) {
+      el.checked = state[id] ?? true;
+    } else {
+      el.value = state[id] ?? "";
+    }
+  }
 
   if (state.outputs) {
-    setText("followup_best", state.outputs.followup_best || "");
-    setText("followup_soft", state.outputs.followup_soft || "");
-    setText("followup_neutral", state.outputs.followup_neutral || "");
-    setText("followup_assertive", state.outputs.followup_assertive || "");
-    setText("reminders", state.outputs.reminders || "");
-    setText("sys_mode", state.outputs.sys_mode || "—");
-    setText("sys_health", state.outputs.sys_health || "—");
-    setText("reasoning_tags", state.outputs.reasoning_tags || "");
-    setText("next_actions", state.outputs.next_actions || "");
-    setText("ghost_busters", state.outputs.ghost_busters || "");
-
-    const ghostCard = document.getElementById("ghostCard");
-    if (ghostCard) {
-      ghostCard.style.display = state.outputs.ghost_visible || "none";
-    }
+    const o = state.outputs;
+    setText("followup_best", o.followup_best || "");
+    setText("followup_soft", o.followup_soft || "");
+    setText("followup_neutral", o.followup_neutral || "");
+    setText("followup_assertive", o.followup_assertive || "");
+    setText("reminders", o.reminders || "");
+    setText("sys_mode", o.sys_mode || "—");
+    setText("sys_health", o.sys_health || "—");
+    setText("reasoning_tags", o.reasoning_tags || "");
+    setText("next_actions", o.next_actions || "");
+    setText("ghost_busters", o.ghost_busters || "");
+    setGhostVisible(o.ghost_visible === "block");
   }
 }
 
@@ -183,18 +157,12 @@ async function loadState() {
 }
 
 function wireAutoSave() {
-  const ids = [
-    "stage","customer","vehicle",
-    "lead_source","budget","timeline","trade","objections",
-    "days_since","last_message","last_was_question","tone","raw_note",
-    "include_followup","include_reminders"
-  ];
-  ids.forEach((id) => {
+  for (const id of INPUT_FIELDS) {
     const el = $(id);
-    if (!el) return;
+    if (!el) continue;
     el.addEventListener("input", () => saveState());
     el.addEventListener("change", () => saveState());
-  });
+  }
 }
 
 // ---------- MV3 scripting helpers ----------
@@ -283,7 +251,7 @@ function normalizeWorkerResponse(json) {
 
   // Legacy: {mode, options:[{label,text}]}
   if (json && Array.isArray(json.options)) {
-    const out = { followup_soft:"", followup_neutral:"", followup_assertive:"", followup_best:"", reminders:[] };
+    const out = { followup_soft: "", followup_neutral: "", followup_assertive: "", followup_best: "", reminders: [] };
     for (const opt of json.options) {
       const label = String(opt?.label || "").toLowerCase();
       const t = String(opt?.text || "").trim();
@@ -311,7 +279,7 @@ async function generate() {
 
   // Require at least something to work with
   if (!raw_note && !last_message) {
-    setStatus("Add Raw Note OR Lead’s last message (one of them is required).");
+    setStatus("Add Raw Note OR Lead's last message (one of them is required).");
     return;
   }
 
@@ -329,7 +297,7 @@ async function generate() {
     trade: $("trade").value.trim(),
     objections: $("objections").value.trim(),
 
-    last_message: last_message,
+    last_message,
     days_since: Number($("days_since").value || 0),
     last_was_question: $("last_was_question").value.trim(),
     tone: $("tone").value.trim(),
@@ -378,11 +346,12 @@ async function generate() {
     setStatus("Network error. Check console.");
   }
 }
+
 function buildFollowupsPack() {
-  const best = $("followup_best").textContent.trim();
-  const soft = $("followup_soft").textContent.trim();
-  const neutral = $("followup_neutral").textContent.trim();
-  const assertive = $("followup_assertive").textContent.trim();
+  const best = getText("followup_best").trim();
+  const soft = getText("followup_soft").trim();
+  const neutral = getText("followup_neutral").trim();
+  const assertive = getText("followup_assertive").trim();
 
   const parts = [];
   if (best) parts.push(`BEST:\n${best}`);
@@ -394,9 +363,9 @@ function buildFollowupsPack() {
 }
 
 function buildActionsPack() {
-  const reminders = $("reminders").textContent.trim();
-  const nextActions = $("next_actions").textContent.trim();
-  const tags = $("reasoning_tags").textContent.trim();
+  const reminders = getText("reminders").trim();
+  const nextActions = getText("next_actions").trim();
+  const tags = getText("reasoning_tags").trim();
 
   const parts = [];
   if (tags) parts.push(`TAGS:\n${tags}`);
@@ -404,9 +373,8 @@ function buildActionsPack() {
   if (nextActions) parts.push(`\nNEXT ACTIONS:\n${nextActions}`);
 
   // Ghost busters only if visible + present
-  const ghostCard = document.getElementById("ghostCard");
-  const ghost = $("ghost_busters").textContent.trim();
-  if (ghostCard && ghostCard.style.display !== "none" && ghost) {
+  const ghost = getText("ghost_busters").trim();
+  if ($("ghostCard")?.style.display !== "none" && ghost) {
     parts.push(`\nGHOST BUSTERS:\n${ghost}`);
   }
 
@@ -414,8 +382,8 @@ function buildActionsPack() {
 }
 
 function buildEverythingPack() {
-  const mode = $("sys_mode").textContent.trim();
-  const health = $("sys_health").textContent.trim();
+  const mode = getText("sys_mode").trim();
+  const health = getText("sys_health").trim();
 
   const header = [];
   if (mode && mode !== "—") header.push(`MODE: ${mode}`);
@@ -438,20 +406,23 @@ document.addEventListener("click", async (e) => {
 
   if (t?.id === "btnGenerate") {
     await generate();
+    return;
   }
 
   if (t?.id === "btnCopyBest") {
-    const best = $("followup_best").textContent.trim();
+    const best = getText("followup_best").trim();
     if (!best) return setStatus("Nothing to copy.");
     await copyText(best);
     setStatus("Copied Best.");
+    return;
   }
 
-    if (t?.id === "btnCopyFollowups") {
+  if (t?.id === "btnCopyFollowups") {
     const pack = buildFollowupsPack();
     if (!pack) return setStatus("No follow-ups to copy yet.");
     await copyText(pack);
     setStatus("Copied all follow-ups.");
+    return;
   }
 
   if (t?.id === "btnCopyActions") {
@@ -459,6 +430,7 @@ document.addEventListener("click", async (e) => {
     if (!pack) return setStatus("No reminders/actions to copy yet.");
     await copyText(pack);
     setStatus("Copied reminders + actions.");
+    return;
   }
 
   if (t?.id === "btnCopyAll") {
@@ -466,8 +438,8 @@ document.addEventListener("click", async (e) => {
     if (!pack) return setStatus("Nothing to copy yet.");
     await copyText(pack);
     setStatus("Copied everything.");
+    return;
   }
-
 
   if (t?.id === "btnSelection") {
     try {
@@ -480,6 +452,7 @@ document.addEventListener("click", async (e) => {
       console.error(err);
       setStatus("Selection failed (check permissions / active tab).");
     }
+    return;
   }
 
   if (t?.id === "btnScrape") {
@@ -493,23 +466,16 @@ document.addEventListener("click", async (e) => {
       console.error(err);
       setStatus("Auto-fill failed (needs selectors + permissions).");
     }
+    return;
   }
 
   const key = t?.dataset?.copy;
   if (key) {
-    let text = "";
-  
-    if (key === "reminders") text = $("reminders").textContent.trim();
-    else if (key === "next_actions") text = $("next_actions").textContent.trim();
-    else if (key === "reasoning_tags") text = $("reasoning_tags").textContent.trim();
-    else if (key === "ghost_busters") text = $("ghost_busters").textContent.trim();
-    else text = $(key)?.textContent?.trim() || "";
-  
+    const text = getText(key).trim();
     if (!text) return setStatus("Nothing to copy.");
     await copyText(text);
     setStatus(`Copied ${key}.`);
-}
-
+  }
 });
 
 // init
