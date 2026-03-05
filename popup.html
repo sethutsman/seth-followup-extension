@@ -14,18 +14,18 @@
 
     <label>Stage</label>
     <select id="stage">
-  <option value="">(optional)</option>
-  <option value="new-lead">New Lead</option>
-  <option value="appt-set">Appt Set</option>
-  <option value="appt-confirmed">Appt Confirmed</option>
-  <option value="numbers">Numbers</option>
-  <option value="unsold-show">Unsold Show</option>
-  <option value="unsold-td">Unsold TD</option>
-  <option value="unsold-numbers">Unsold Numbers</option>
-  <option value="no-show">No-Show</option>
-  <option value="delivery-scheduled">Delivery Scheduled</option>
-  <option value="sold">Sold</option>
-</select>
+      <option value="">(optional)</option>
+      <option value="new-lead">New Lead</option>
+      <option value="appt-set">Appt Set</option>
+      <option value="appt-confirmed">Appt Confirmed</option>
+      <option value="numbers">Numbers</option>
+      <option value="unsold-show">Unsold Show</option>
+      <option value="unsold-td">Unsold TD</option>
+      <option value="unsold-numbers">Unsold Numbers</option>
+      <option value="no-show">No-Show</option>
+      <option value="delivery-scheduled">Delivery Scheduled</option>
+      <option value="sold">Sold</option>
+    </select>
 
 
     <label>Customer (optional)</label>
@@ -95,37 +95,36 @@
     <div id="status" class="status"></div>
 
     <div class="sys">
-  <div class="pillRow">
-    <div class="pill"><b>Mode:</b> <span id="sys_mode">—</span></div>
-    <div class="pill"><b>Deal:</b> <span id="sys_health">—</span></div>
-  </div>
+      <div class="pillRow">
+        <div class="pill"><b>Mode:</b> <span id="sys_mode">—</span></div>
+        <div class="pill"><b>Deal:</b> <span id="sys_health">—</span></div>
+      </div>
 
-  <div class="card">
-    <div class="cardHeader">
-      <div>Tags</div>
-      <button data-copy="reasoning_tags">Copy</button>
+      <div class="card">
+        <div class="cardHeader">
+          <div>Tags</div>
+          <button data-copy="reasoning_tags">Copy</button>
+        </div>
+        <pre id="reasoning_tags"></pre>
+      </div>
+
+      <div class="card">
+        <div class="cardHeader">
+          <div>Next Actions</div>
+          <button data-copy="next_actions">Copy</button>
+        </div>
+        <pre id="next_actions"></pre>
+      </div>
+
+      <div class="card" id="ghostCard" style="display:none;">
+        <div class="cardHeader">
+          <div>Ghost Busters</div>
+          <button data-copy="ghost_busters">Copy</button>
+        </div>
+        <pre id="ghost_busters"></pre>
+      </div>
     </div>
-    <pre id="reasoning_tags"></pre>
-  </div>
 
-  <div class="card">
-    <div class="cardHeader">
-      <div>Next Actions</div>
-      <button data-copy="next_actions">Copy</button>
-    </div>
-    <pre id="next_actions"></pre>
-  </div>
-
-  <div class="card" id="ghostCard" style="display:none;">
-    <div class="cardHeader">
-      <div>Ghost Busters</div>
-      <button data-copy="ghost_busters">Copy</button>
-    </div>
-    <pre id="ghost_busters"></pre>
-  </div>
-</div>
-
-    
     <div class="results">
       <div class="card">
         <div class="cardHeader">
