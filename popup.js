@@ -10,14 +10,6 @@ const setText = (id, value) => {
   if (el) el.textContent = value ?? "";
 };
 
-const OUTPUT_FIELDS = [
-  "followup_best",
-  "followup_soft",
-  "followup_neutral",
-  "followup_assertive",
-  "reminders",
-];
-
 function setStatus(msg) {
   const el = $("status");
   if (el) el.textContent = msg || "";
@@ -28,11 +20,8 @@ async function copyText(text) {
   await navigator.clipboard.writeText(text);
 }
 
-function normalizeReminders(reminders) {
-  if (!Array.isArray(reminders)) return "";
-  return reminders.map(r => `- ${String(r)}`).join("\n");
-}
-function normalizeList(items) {
+// ---------- normalizers ----------
+function normalizeArray(items) {
   if (!Array.isArray(items)) return "";
   return items.map(x => `- ${String(x)}`).join("\n");
 }
@@ -43,134 +32,107 @@ function normalizeTags(tags) {
 }
 
 function normalizeGhost(ghost) {
-  // ghost is {a,b} or strings; show as two bullets if present
   if (!ghost) return "";
-  const a = String(ghost.a || "").trim();
-  const b = String(ghost.b || "").trim();
-  const parts = [];
-  if (a) parts.push(`- ${a}`);
-  if (b) parts.push(`- ${b}`);
-  return parts.join("\n");
+  return [ghost.a, ghost.b]
+    .map(v => String(v || "").trim())
+    .filter(Boolean)
+    .map(v => `- ${v}`)
+    .join("\n");
 }
 
-function blankOutputs() {
-  OUTPUT_FIELDS.forEach((id) => setText(id, ""));
+// ---------- outputs ----------
+const TEXT_OUTPUTS = [
+  "followup_best", "followup_soft", "followup_neutral", "followup_assertive",
+  "reminders", "reasoning_tags", "next_actions", "ghost_busters",
+];
 
-  // system mode fields
+function blankOutputs() {
+  TEXT_OUTPUTS.forEach(id => setText(id, ""));
   setText("sys_mode", "—");
   setText("sys_health", "—");
-  setText("reasoning_tags", "");
-  setText("next_actions", "");
-  setText("ghost_busters", "");
-  const ghostCard = document.getElementById("ghostCard");
+  const ghostCard = $("ghostCard");
   if (ghostCard) ghostCard.style.display = "none";
 }
 
-
 function setOutputs(out) {
-  // existing
-  setText("followup_best", out.followup_best || "");
-  setText("followup_soft", out.followup_soft || "");
-  setText("followup_neutral", out.followup_neutral || "");
+  setText("followup_best",      out.followup_best || "");
+  setText("followup_soft",      out.followup_soft || "");
+  setText("followup_neutral",   out.followup_neutral || "");
   setText("followup_assertive", out.followup_assertive || "");
-  setText("reminders", normalizeReminders(out.reminders || []));
+  setText("reminders",          normalizeArray(out.reminders || []));
+  setText("sys_mode",           out.mode || "—");
+  setText("sys_health",         out.deal_health || "—");
+  setText("reasoning_tags",     normalizeTags(out.reasoning_tags || []));
+  setText("next_actions",       normalizeArray(out.next_actions || []));
 
-  // system mode
-  setText("sys_mode", out.mode || "—");
-  setText("sys_health", out.deal_health || "—");
-  setText("reasoning_tags", normalizeTags(out.reasoning_tags || []));
-  setText("next_actions", normalizeList(out.next_actions || []));
-
-  const ghostText = normalizeGhost(out.ghost_busters || {});
+  const ghostText = normalizeGhost(out.ghost_busters || null);
   setText("ghost_busters", ghostText);
-
-  const ghostCard = document.getElementById("ghostCard");
+  const ghostCard = $("ghostCard");
   if (ghostCard) ghostCard.style.display = (out.mode === "ghost" && ghostText) ? "block" : "none";
 }
 
+// ---------- form field config ----------
+const FORM_FIELDS = [
+  { id: "stage",             type: "value",   default: "" },
+  { id: "customer",          type: "value",   default: "" },
+  { id: "vehicle",           type: "value",   default: "" },
+  { id: "lead_source",       type: "value",   default: "" },
+  { id: "budget",            type: "value",   default: "" },
+  { id: "timeline",          type: "value",   default: "" },
+  { id: "trade",             type: "value",   default: "" },
+  { id: "objections",        type: "value",   default: "" },
+  { id: "days_since",        type: "value",   default: "" },
+  { id: "last_message",      type: "value",   default: "" },
+  { id: "last_was_question", type: "value",   default: "" },
+  { id: "tone",              type: "value",   default: "" },
+  { id: "raw_note",          type: "value",   default: "" },
+  { id: "include_followup",  type: "checked", default: true },
+  { id: "include_reminders", type: "checked", default: true },
+];
 
 // ---------- persistence ----------
 const STORAGE_KEY = "followup_popup_state_v2";
 
 function getStateFromUI() {
-  return {
-    stage: $("stage").value || "",
-    customer: $("customer").value || "",
-    vehicle: $("vehicle").value || "",
-
-    lead_source: $("lead_source").value || "",
-    budget: $("budget").value || "",
-    timeline: $("timeline").value || "",
-    trade: $("trade").value || "",
-    objections: $("objections").value || "",
-
-    days_since: $("days_since").value || "",
-    last_message: $("last_message").value || "",
-    last_was_question: $("last_was_question").value || "",
-    tone: $("tone").value || "",
-
-    raw_note: $("raw_note").value || "",
-
-    include_followup: $("include_followup").checked,
-    include_reminders: $("include_reminders").checked,
-
-    outputs: {
-      followup_best: getText("followup_best"),
-      followup_soft: getText("followup_soft"),
-      followup_neutral: getText("followup_neutral"),
-      followup_assertive: getText("followup_assertive"),
-      reminders: getText("reminders"),
-
-      sys_mode: getText("sys_mode") || "—",
-      sys_health: getText("sys_health") || "—",
-      reasoning_tags: getText("reasoning_tags"),
-      next_actions: getText("next_actions"),
-      ghost_busters: getText("ghost_busters"),
-      ghost_visible: (document.getElementById("ghostCard")?.style.display || "none"),
-    },
+  const state = {};
+  for (const { id, type } of FORM_FIELDS) {
+    const el = $(id);
+    state[id] = el
+      ? (type === "checked" ? el.checked : el.value || "")
+      : (type === "checked" ? false : "");
+  }
+  state.outputs = {
+    ...Object.fromEntries(TEXT_OUTPUTS.map(id => [id, getText(id)])),
+    sys_mode:     getText("sys_mode") || "—",
+    sys_health:   getText("sys_health") || "—",
+    ghost_visible: $("ghostCard")?.style.display || "none",
   };
+  return state;
 }
-
 
 function applyStateToUI(state) {
   if (!state) return;
-
-  $("stage").value = state.stage ?? "";
-  $("customer").value = state.customer ?? "";
-  $("vehicle").value = state.vehicle ?? "";
-
-  $("lead_source").value = state.lead_source ?? "";
-  $("budget").value = state.budget ?? "";
-  $("timeline").value = state.timeline ?? "";
-  $("trade").value = state.trade ?? "";
-  $("objections").value = state.objections ?? "";
-
-  $("days_since").value = state.days_since ?? "";
-  $("last_message").value = state.last_message ?? "";
-  $("last_was_question").value = state.last_was_question ?? "";
-  $("tone").value = state.tone ?? "";
-  $("raw_note").value = state.raw_note ?? "";
-
-  $("include_followup").checked = state.include_followup ?? true;
-  $("include_reminders").checked = state.include_reminders ?? true;
-
-  if (state.outputs) {
-    setText("followup_best", state.outputs.followup_best || "");
-    setText("followup_soft", state.outputs.followup_soft || "");
-    setText("followup_neutral", state.outputs.followup_neutral || "");
-    setText("followup_assertive", state.outputs.followup_assertive || "");
-    setText("reminders", state.outputs.reminders || "");
-    setText("sys_mode", state.outputs.sys_mode || "—");
-    setText("sys_health", state.outputs.sys_health || "—");
-    setText("reasoning_tags", state.outputs.reasoning_tags || "");
-    setText("next_actions", state.outputs.next_actions || "");
-    setText("ghost_busters", state.outputs.ghost_busters || "");
-
-    const ghostCard = document.getElementById("ghostCard");
-    if (ghostCard) {
-      ghostCard.style.display = state.outputs.ghost_visible || "none";
-    }
+  for (const { id, type, default: def } of FORM_FIELDS) {
+    const el = $(id);
+    if (!el) continue;
+    if (type === "checked") el.checked = state[id] ?? def;
+    else el.value = state[id] ?? def;
   }
+  if (state.outputs) {
+    TEXT_OUTPUTS.forEach(id => setText(id, state.outputs[id] || ""));
+    setText("sys_mode",   state.outputs.sys_mode   || "—");
+    setText("sys_health", state.outputs.sys_health || "—");
+    const ghostCard = $("ghostCard");
+    if (ghostCard) ghostCard.style.display = state.outputs.ghost_visible || "none";
+  }
+}
+
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
 }
 
 async function saveState() {
@@ -183,18 +145,13 @@ async function loadState() {
 }
 
 function wireAutoSave() {
-  const ids = [
-    "stage","customer","vehicle",
-    "lead_source","budget","timeline","trade","objections",
-    "days_since","last_message","last_was_question","tone","raw_note",
-    "include_followup","include_reminders"
-  ];
-  ids.forEach((id) => {
+  const debouncedSave = debounce(saveState, 400);
+  for (const { id } of FORM_FIELDS) {
     const el = $(id);
-    if (!el) return;
-    el.addEventListener("input", () => saveState());
-    el.addEventListener("change", () => saveState());
-  });
+    if (!el) continue;
+    el.addEventListener("input", debouncedSave);
+    el.addEventListener("change", debouncedSave);
+  }
 }
 
 // ---------- MV3 scripting helpers ----------
@@ -209,24 +166,24 @@ async function execInTab(func, args = []) {
   const results = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     func,
-    args
+    args,
   });
   return results?.[0]?.result;
 }
 
 async function getSelectionText() {
   return execInTab(() => {
-    const selection = window.getSelection ? String(window.getSelection().toString() || "") : "";
-    if (selection) return selection;
+    const sel = window.getSelection?.().toString() || "";
+    if (sel) return sel;
 
-    const active = document.activeElement;
-    const isInput = active && active.tagName === "INPUT";
-    const isTextArea = active && active.tagName === "TEXTAREA";
-    if (isInput || isTextArea) {
-      const type = isInput ? (active.getAttribute("type") || "text").toLowerCase() : "textarea";
-      const supportsSelection = isTextArea || ["text", "search", "url", "email", "tel", "number"].includes(type);
-      if (supportsSelection && typeof active.selectionStart === "number" && typeof active.selectionEnd === "number") {
-        return String(active.value || "").slice(active.selectionStart, active.selectionEnd);
+    const el = document.activeElement;
+    const tag = el?.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") {
+      const type = (el.getAttribute("type") || "text").toLowerCase();
+      const supported = tag === "TEXTAREA" ||
+        ["text", "search", "url", "email", "tel", "number"].includes(type);
+      if (supported && typeof el.selectionStart === "number") {
+        return String(el.value || "").slice(el.selectionStart, el.selectionEnd);
       }
     }
 
@@ -234,123 +191,162 @@ async function getSelectionText() {
   });
 }
 
-// Best-effort scrape (you'll likely refine selectors for VinSolutions later)
+// Best-effort scrape (refine selectors for VinSolutions as needed)
 async function scrapeBestEffort() {
   return execInTab(() => {
     const readText = (el) => {
       if (!el) return "";
-      if (typeof el.value === "string") return el.value.trim();
-      return el.textContent?.trim() || "";
+      return typeof el.value === "string" ? el.value.trim() : (el.textContent?.trim() || "");
     };
     const fromSelectors = (selectors) => {
       for (const sel of selectors) {
-        const value = readText(document.querySelector(sel));
-        if (value) return value;
+        const val = readText(document.querySelector(sel));
+        if (val) return val;
       }
       return "";
     };
-
-    const customer = fromSelectors([
-      "[data-testid='customer-name']",
-      ".customerName",
-      "[name*='customer']",
-      "[id*='customer']",
-      "[aria-label*='Customer']",
-    ]);
-    const vehicle = fromSelectors([
-      "[data-testid='vehicle']",
-      ".vehicle",
-      "[name*='vehicle']",
-      "[id*='vehicle']",
-      "[aria-label*='Vehicle']",
-    ]);
-    return { customer, vehicle };
+    return {
+      customer: fromSelectors([
+        "[data-testid='customer-name']", ".customerName",
+        "[name*='customer']", "[id*='customer']", "[aria-label*='Customer']",
+      ]),
+      vehicle: fromSelectors([
+        "[data-testid='vehicle']", ".vehicle",
+        "[name*='vehicle']", "[id*='vehicle']", "[aria-label*='Vehicle']",
+      ]),
+    };
   });
 }
 
 // ---------- worker response normalization ----------
 function normalizeWorkerResponse(json) {
-  // Preferred shape: followup_* keys
-  if (json && (json.followup_best || json.followup_soft || json.followup_neutral || json.followup_assertive)) {
-    return {
-      followup_best: json.followup_best || "",
-      followup_soft: json.followup_soft || "",
-      followup_neutral: json.followup_neutral || "",
-      followup_assertive: json.followup_assertive || "",
-      reminders: Array.isArray(json.reminders) ? json.reminders : [],
-    };
-  }
+  if (!json) return null;
 
-  // Legacy: {mode, options:[{label,text}]}
-  if (json && Array.isArray(json.options)) {
-    const out = { followup_soft:"", followup_neutral:"", followup_assertive:"", followup_best:"", reminders:[] };
+  let out;
+  if (json.followup_best || json.followup_soft || json.followup_neutral || json.followup_assertive) {
+    out = {
+      followup_best:      json.followup_best      || "",
+      followup_soft:      json.followup_soft      || "",
+      followup_neutral:   json.followup_neutral   || "",
+      followup_assertive: json.followup_assertive || "",
+      reminders:          Array.isArray(json.reminders) ? json.reminders : [],
+    };
+  } else if (Array.isArray(json.options)) {
+    out = { followup_best: "", followup_soft: "", followup_neutral: "", followup_assertive: "", reminders: [] };
     for (const opt of json.options) {
       const label = String(opt?.label || "").toLowerCase();
-      const t = String(opt?.text || "").trim();
-      if (!t) continue;
-      if (label.includes("best")) out.followup_best = t;
-      else if (label.includes("soft")) out.followup_soft = t;
-      else if (label.includes("neutral")) out.followup_neutral = t;
-      else if (label.includes("assert")) out.followup_assertive = t;
+      const text  = String(opt?.text  || "").trim();
+      if (!text) continue;
+      if (label.includes("best"))    out.followup_best      = text;
+      else if (label.includes("soft"))    out.followup_soft      = text;
+      else if (label.includes("neutral")) out.followup_neutral   = text;
+      else if (label.includes("assert"))  out.followup_assertive = text;
     }
-    if (!out.followup_best) out.followup_best = out.followup_neutral || out.followup_soft || out.followup_assertive || "";
+    if (!out.followup_best) {
+      out.followup_best = out.followup_neutral || out.followup_soft || out.followup_assertive || "";
+    }
     out.reminders = Array.isArray(json.reminders) ? json.reminders : [];
-    return out;
+  } else {
+    return null;
   }
 
-  return null;
+  // Attach system fields
+  out.mode           = json.mode        || "";
+  out.deal_health    = json.deal_health || "";
+  out.reasoning_tags = Array.isArray(json.reasoning_tags) ? json.reasoning_tags : [];
+  out.next_actions   = Array.isArray(json.next_actions)   ? json.next_actions   : [];
+  out.ghost_busters  = json.ghost_busters || null;
+
+  return out;
+}
+
+// ---------- pack builders ----------
+function buildFollowupsPack() {
+  return [
+    ["BEST",      "followup_best"],
+    ["SOFT",      "followup_soft"],
+    ["NEUTRAL",   "followup_neutral"],
+    ["ASSERTIVE", "followup_assertive"],
+  ]
+    .map(([label, id]) => { const t = $(id)?.textContent.trim(); return t ? `${label}:\n${t}` : ""; })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function buildActionsPack() {
+  const parts = [];
+  const tags    = $("reasoning_tags")?.textContent.trim();
+  const rem     = $("reminders")?.textContent.trim();
+  const actions = $("next_actions")?.textContent.trim();
+  const ghost   = $("ghost_busters")?.textContent.trim();
+  const ghostCard = $("ghostCard");
+
+  if (tags)    parts.push(`TAGS:\n${tags}`);
+  if (rem)     parts.push(`REMINDERS:\n${rem}`);
+  if (actions) parts.push(`NEXT ACTIONS:\n${actions}`);
+  if (ghost && ghostCard?.style.display !== "none") parts.push(`GHOST BUSTERS:\n${ghost}`);
+
+  return parts.join("\n\n");
+}
+
+function buildEverythingPack() {
+  const mode   = $("sys_mode")?.textContent.trim();
+  const health = $("sys_health")?.textContent.trim();
+  const header = [
+    mode   && mode   !== "—" ? `MODE: ${mode}`   : "",
+    health && health !== "—" ? `DEAL: ${health}` : "",
+  ].filter(Boolean).join(" | ");
+
+  return [header, buildFollowupsPack(), buildActionsPack()].filter(Boolean).join("\n\n");
 }
 
 // ---------- main ----------
+let activeRequest = null;
+
 async function generate() {
+  if (activeRequest) activeRequest.abort();
+  const controller = new AbortController();
+  activeRequest = controller;
+
   setStatus("Working...");
   blankOutputs();
 
-  const raw_note = $("raw_note").value.trim();
+  const raw_note    = $("raw_note").value.trim();
   const last_message = $("last_message").value.trim();
 
-  // Require at least something to work with
   if (!raw_note && !last_message) {
-    setStatus("Add Raw Note OR Lead’s last message (one of them is required).");
+    setStatus("Add Raw Note OR Lead's last message (one is required).");
+    activeRequest = null;
     return;
   }
 
   const payload = {
-    // Back-compat: always send raw_note, derived from last_message if needed
-    raw_note: raw_note || last_message,
-
-    stage: $("stage").value.trim(),
-    customer: $("customer").value.trim(),
-    vehicle: $("vehicle").value.trim(),
-
-    lead_source: $("lead_source").value.trim(),
-    budget: $("budget").value.trim(),
-    timeline: $("timeline").value.trim(),
-    trade: $("trade").value.trim(),
-    objections: $("objections").value.trim(),
-
-    last_message: last_message,
-    days_since: Number($("days_since").value || 0),
+    raw_note:          raw_note || last_message,
+    stage:             $("stage").value.trim(),
+    customer:          $("customer").value.trim(),
+    vehicle:           $("vehicle").value.trim(),
+    lead_source:       $("lead_source").value.trim(),
+    budget:            $("budget").value.trim(),
+    timeline:          $("timeline").value.trim(),
+    trade:             $("trade").value.trim(),
+    objections:        $("objections").value.trim(),
+    last_message,
+    days_since:        Number($("days_since").value || 0),
     last_was_question: $("last_was_question").value.trim(),
-    tone: $("tone").value.trim(),
-
-    include_followup: $("include_followup").checked,
+    tone:              $("tone").value.trim(),
+    include_followup:  $("include_followup").checked,
     include_reminders: $("include_reminders").checked,
   };
-
-  console.log("PAYLOAD", payload);
 
   try {
     const res = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
 
     const text = await res.text();
-    console.log("STATUS", res.status);
-    console.log("RAW RESPONSE", text);
-
     let json;
     try {
       json = JSON.parse(text);
@@ -374,102 +370,50 @@ async function generate() {
     await saveState();
     setStatus("Done.");
   } catch (e) {
-    console.error(e);
-    setStatus("Network error. Check console.");
+    if (e.name !== "AbortError") {
+      console.error(e);
+      setStatus("Network error. Check console.");
+    }
+  } finally {
+    if (activeRequest === controller) activeRequest = null;
   }
-}
-function buildFollowupsPack() {
-  const best = $("followup_best").textContent.trim();
-  const soft = $("followup_soft").textContent.trim();
-  const neutral = $("followup_neutral").textContent.trim();
-  const assertive = $("followup_assertive").textContent.trim();
-
-  const parts = [];
-  if (best) parts.push(`BEST:\n${best}`);
-  if (soft) parts.push(`\nSOFT:\n${soft}`);
-  if (neutral) parts.push(`\nNEUTRAL:\n${neutral}`);
-  if (assertive) parts.push(`\nASSERTIVE:\n${assertive}`);
-
-  return parts.join("\n");
-}
-
-function buildActionsPack() {
-  const reminders = $("reminders").textContent.trim();
-  const nextActions = $("next_actions").textContent.trim();
-  const tags = $("reasoning_tags").textContent.trim();
-
-  const parts = [];
-  if (tags) parts.push(`TAGS:\n${tags}`);
-  if (reminders) parts.push(`\nREMINDERS:\n${reminders}`);
-  if (nextActions) parts.push(`\nNEXT ACTIONS:\n${nextActions}`);
-
-  // Ghost busters only if visible + present
-  const ghostCard = document.getElementById("ghostCard");
-  const ghost = $("ghost_busters").textContent.trim();
-  if (ghostCard && ghostCard.style.display !== "none" && ghost) {
-    parts.push(`\nGHOST BUSTERS:\n${ghost}`);
-  }
-
-  return parts.join("\n");
-}
-
-function buildEverythingPack() {
-  const mode = $("sys_mode").textContent.trim();
-  const health = $("sys_health").textContent.trim();
-
-  const header = [];
-  if (mode && mode !== "—") header.push(`MODE: ${mode}`);
-  if (health && health !== "—") header.push(`DEAL: ${health}`);
-
-  const parts = [];
-  if (header.length) parts.push(header.join(" | "));
-  const followups = buildFollowupsPack();
-  const actions = buildActionsPack();
-
-  if (followups) parts.push(followups);
-  if (actions) parts.push(actions);
-
-  return parts.join("\n\n");
 }
 
 // ---------- wiring ----------
+const BULK_COPY = {
+  btnCopyBest:      () => ({ text: $("followup_best")?.textContent.trim(), label: "Best" }),
+  btnCopyFollowups: () => ({ text: buildFollowupsPack(),  label: "all follow-ups" }),
+  btnCopyActions:   () => ({ text: buildActionsPack(),    label: "reminders + actions" }),
+  btnCopyAll:       () => ({ text: buildEverythingPack(), label: "everything" }),
+};
+
 document.addEventListener("click", async (e) => {
   const t = e.target;
+  const id = t?.id;
 
-  if (t?.id === "btnGenerate") {
+  if (id === "btnGenerate") {
     await generate();
+    return;
   }
 
-  if (t?.id === "btnCopyBest") {
-    const best = $("followup_best").textContent.trim();
-    if (!best) return setStatus("Nothing to copy.");
-    await copyText(best);
-    setStatus("Copied Best.");
+  if (id && BULK_COPY[id]) {
+    const { text, label } = BULK_COPY[id]();
+    if (!text) return setStatus("Nothing to copy.");
+    await copyText(text);
+    setStatus(`Copied ${label}.`);
+    return;
   }
 
-    if (t?.id === "btnCopyFollowups") {
-    const pack = buildFollowupsPack();
-    if (!pack) return setStatus("No follow-ups to copy yet.");
-    await copyText(pack);
-    setStatus("Copied all follow-ups.");
+  const key = t?.dataset?.copy;
+  if (key) {
+    const text = $(key)?.textContent?.trim() || "";
+    if (!text) return setStatus("Nothing to copy.");
+    await copyText(text);
+    setStatus(`Copied ${key}.`);
+    return;
   }
 
-  if (t?.id === "btnCopyActions") {
-    const pack = buildActionsPack();
-    if (!pack) return setStatus("No reminders/actions to copy yet.");
-    await copyText(pack);
-    setStatus("Copied reminders + actions.");
-  }
-
-  if (t?.id === "btnCopyAll") {
-    const pack = buildEverythingPack();
-    if (!pack) return setStatus("Nothing to copy yet.");
-    await copyText(pack);
-    setStatus("Copied everything.");
-  }
-
-
-  if (t?.id === "btnSelection") {
+  if (id === "btnSelection") {
     try {
       const sel = await getSelectionText();
       if (!sel) return setStatus("No selected text found.");
@@ -480,13 +424,14 @@ document.addEventListener("click", async (e) => {
       console.error(err);
       setStatus("Selection failed (check permissions / active tab).");
     }
+    return;
   }
 
-  if (t?.id === "btnScrape") {
+  if (id === "btnScrape") {
     try {
       const data = await scrapeBestEffort();
       if (data?.customer && !$("customer").value.trim()) $("customer").value = data.customer;
-      if (data?.vehicle && !$("vehicle").value.trim()) $("vehicle").value = data.vehicle;
+      if (data?.vehicle  && !$("vehicle").value.trim())  $("vehicle").value  = data.vehicle;
       await saveState();
       setStatus("Auto-fill attempted.");
     } catch (err) {
@@ -494,22 +439,6 @@ document.addEventListener("click", async (e) => {
       setStatus("Auto-fill failed (needs selectors + permissions).");
     }
   }
-
-  const key = t?.dataset?.copy;
-  if (key) {
-    let text = "";
-  
-    if (key === "reminders") text = $("reminders").textContent.trim();
-    else if (key === "next_actions") text = $("next_actions").textContent.trim();
-    else if (key === "reasoning_tags") text = $("reasoning_tags").textContent.trim();
-    else if (key === "ghost_busters") text = $("ghost_busters").textContent.trim();
-    else text = $(key)?.textContent?.trim() || "";
-  
-    if (!text) return setStatus("Nothing to copy.");
-    await copyText(text);
-    setStatus(`Copied ${key}.`);
-}
-
 });
 
 // init

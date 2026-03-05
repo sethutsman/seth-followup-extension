@@ -3,27 +3,19 @@ html, body {
   width: 420px;
   min-width: 420px;
   max-width: 420px;
-
   height: 600px;
   min-height: 600px;
-
   margin: 0;
   padding: 0;
   overflow: hidden;
 }
-/* Main container scroll */
-#app, .container, body > div {
-  height: 100%;
-  overflow-y: auto;
-  box-sizing: border-box;
-}
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-.wrap { padding: 10px; width: 360px; box-sizing: border-box; }
+/* Main container scroll */
+.wrap { height: 100%; overflow-y: auto; padding: 10px; width: 360px; }
+
 label { display: block; margin-top: 10px; font-size: 12px; opacity: 0.8; }
-input, textarea, select { width: 100%; box-sizing: border-box; padding: 6px; margin-top: 4px; }
+input, textarea, select { width: 100%; padding: 6px; margin-top: 4px; }
 .row { display: flex; gap: 8px; margin-top: 10px; }
 .row.toggles { justify-content: space-between; }
 button { padding: 6px 10px; cursor: pointer; }
