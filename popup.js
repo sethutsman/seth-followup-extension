@@ -440,20 +440,6 @@ document.addEventListener("click", async (e) => {
     await generate();
   }
 
-  if (t?.id === "btnClear") {
-    ["stage","customer","vehicle","lead_source","budget","timeline","trade","objections",
-     "days_since","last_message","last_was_question","tone","raw_note"].forEach(id => {
-      const el = $(id);
-      if (!el) return;
-      el.value = el.tagName === "SELECT" ? "" : "";
-    });
-    $("include_followup").checked = true;
-    $("include_reminders").checked = true;
-    blankOutputs();
-    setStatus("");
-    await chrome.storage.local.remove(STORAGE_KEY);
-  }
-
   if (t?.id === "btnCopyBest") {
     const best = $("followup_best").textContent.trim();
     if (!best) return setStatus("Nothing to copy.");
