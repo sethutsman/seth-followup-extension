@@ -236,75 +236,73 @@ async function getSelectionText() {
 
 // Best-effort scrape (you'll likely refine selectors for VinSolutions later)
 async function scrapeBestEffort() {
-  return execInTab(() => {
-    const NAV_TAGS = new Set(["NAV", "HEADER", "ASIDE", "FOOTER"]);
+  const tab = await getActiveTab();
+  if (!tab?.id) throw new Error("No active tab.");
 
-    // Collect the top document + any same-origin iframes (VinSolutions loads content in iframes)
-    function getAllDocs() {
-      const docs = [document];
-      try {
-        for (const frame of document.querySelectorAll("iframe")) {
-          try {
-            if (frame.contentDocument) docs.push(frame.contentDocument);
-          } catch (e) { /* cross-origin, skip */ }
+  // Run in every frame — handles cross-origin iframes that contentDocument can't reach
+  const results = await chrome.scripting.executeScript({
+    target: { tabId: tab.id, allFrames: true },
+    func: () => {
+      const NAV_TAGS = new Set(["NAV", "HEADER", "ASIDE", "FOOTER"]);
+
+      function inNavArea(el) {
+        let node = el;
+        while (node && node !== document.body) {
+          if (NAV_TAGS.has(node.tagName)) return true;
+          const role = node.getAttribute?.("role") || "";
+          if (role === "navigation" || role === "banner" || role === "menubar") return true;
+          node = node.parentElement;
         }
-      } catch (e) {}
-      return docs;
-    }
-
-    function inNavArea(el) {
-      let node = el;
-      while (node && node !== document.body) {
-        if (NAV_TAGS.has(node.tagName)) return true;
-        const role = node.getAttribute?.("role") || "";
-        if (role === "navigation" || role === "banner" || role === "menubar") return true;
-        node = node.parentElement;
+        return false;
       }
-      return false;
-    }
 
-    function readText(el) {
-      if (!el) return "";
-      if (el.tagName === "INPUT" || el.tagName === "SELECT" || el.tagName === "TEXTAREA") {
-        return (el.value || "").trim();
-      }
-      if (el.tagName === "A") return "";
-      const text = el.textContent?.trim() || "";
-      if (text.length > 80 || /[|\\]/.test(text)) return "";
-      return text;
-    }
-
-    function fromSelectors(selectors) {
-      const allDocs = getAllDocs();
-      for (const sel of selectors) {
-        for (const doc of allDocs) {
-          try {
-            const all = [...doc.querySelectorAll(sel)];
-            for (const el of all) {
-              if (inNavArea(el)) continue;
-              const value = readText(el);
-              if (value) return value;
-            }
-          } catch (e) {}
+      function readText(el) {
+        if (!el) return "";
+        if (el.tagName === "INPUT" || el.tagName === "SELECT" || el.tagName === "TEXTAREA") {
+          return (el.value || "").trim();
         }
+        if (el.tagName === "A") return "";
+        const text = el.textContent?.trim() || "";
+        if (text.length > 80 || /[|\\]/.test(text)) return "";
+        return text;
       }
-      return "";
-    }
 
-    const customer = fromSelectors([
-      "#ContentPlaceHolder1_m_CustomerAndTaskInfo_m_CustomerInfo__CustomerName",
-      ".CustomerInfo_CustomerName",
-    ]);
-    const vehicle = fromSelectors([
-      "#ActiveLeadPanelWONotesAndHistory1_m_VehicleInfo",
-    ]);
-    const trade = fromSelectors([
-      "#TradeIn1BasicInfo",
-    ]);
+      function fromSelectors(selectors) {
+        for (const sel of selectors) {
+          for (const el of document.querySelectorAll(sel)) {
+            if (inNavArea(el)) continue;
+            const value = readText(el);
+            if (value) return value;
+          }
+        }
+        return "";
+      }
 
-    console.log("[AutoFill]", { customer, vehicle, trade, iframes: document.querySelectorAll("iframe").length });
-    return { customer, vehicle, trade };
+      const customer = fromSelectors([
+        "#ContentPlaceHolder1_m_CustomerAndTaskInfo_m_CustomerInfo__CustomerName",
+        ".CustomerInfo_CustomerName",
+      ]);
+      const vehicle = fromSelectors([
+        "#ActiveLeadPanelWONotesAndHistory1_m_VehicleInfo",
+      ]);
+      const trade = fromSelectors([
+        "#TradeIn1BasicInfo",
+      ]);
+
+      console.log("[AutoFill frame]", location.href.slice(0, 80), { customer, vehicle, trade });
+      return { customer, vehicle, trade };
+    },
   });
+
+  // Merge: take first non-empty value found across all frames
+  const merged = { customer: "", vehicle: "", trade: "" };
+  for (const r of (results || [])) {
+    if (!r?.result) continue;
+    if (!merged.customer && r.result.customer) merged.customer = r.result.customer;
+    if (!merged.vehicle && r.result.vehicle) merged.vehicle = r.result.vehicle;
+    if (!merged.trade && r.result.trade) merged.trade = r.result.trade;
+  }
+  return merged;
 }
 
 // ---------- worker response normalization ----------
