@@ -237,32 +237,68 @@ async function getSelectionText() {
 // Best-effort scrape (you'll likely refine selectors for VinSolutions later)
 async function scrapeBestEffort() {
   return execInTab(() => {
-    const readText = (el) => {
+    const NAV_TAGS = new Set(["NAV", "HEADER", "ASIDE", "FOOTER"]);
+
+    // Walk up to check if el is inside a nav/header/aside
+    function inNavArea(el) {
+      let node = el;
+      while (node && node !== document.body) {
+        if (NAV_TAGS.has(node.tagName)) return true;
+        const role = node.getAttribute?.("role") || "";
+        if (role === "navigation" || role === "banner" || role === "menubar") return true;
+        node = node.parentElement;
+      }
+      return false;
+    }
+
+    // Only accept inputs, selects, or short text nodes that aren't nav items / anchors
+    function readText(el) {
       if (!el) return "";
-      if (typeof el.value === "string") return el.value.trim();
-      return el.textContent?.trim() || "";
-    };
-    const fromSelectors = (selectors) => {
+      if (el.tagName === "INPUT" || el.tagName === "SELECT" || el.tagName === "TEXTAREA") {
+        return (el.value || "").trim();
+      }
+      if (el.tagName === "A") return ""; // skip nav links
+      const text = el.textContent?.trim() || "";
+      // Skip anything that looks like a nav label (very long or contains slashes/pipes)
+      if (text.length > 60 || /[|/\\]/.test(text)) return "";
+      return text;
+    }
+
+    function fromSelectors(selectors) {
       for (const sel of selectors) {
-        const value = readText(document.querySelector(sel));
-        if (value) return value;
+        const all = [...document.querySelectorAll(sel)];
+        for (const el of all) {
+          if (inNavArea(el)) continue;
+          const value = readText(el);
+          if (value) return value;
+        }
       }
       return "";
-    };
+    }
 
     const customer = fromSelectors([
       "[data-testid='customer-name']",
+      ".customer-name",
       ".customerName",
-      "[name*='customer']",
-      "[id*='customer']",
-      "[aria-label*='Customer']",
+      "[name='customer_name']",
+      "[name='customerName']",
+      "[id='customer-name']",
+      "[id='customerName']",
+      "[aria-label='Customer Name']",
+      "[aria-label='Customer']",
     ]);
     const vehicle = fromSelectors([
       "[data-testid='vehicle']",
+      "[data-testid='vehicle-name']",
+      ".vehicle-name",
+      ".vehicleName",
       ".vehicle",
-      "[name*='vehicle']",
-      "[id*='vehicle']",
-      "[aria-label*='Vehicle']",
+      "[name='vehicle']",
+      "[name='vehicleName']",
+      "[id='vehicle']",
+      "[id='vehicle-name']",
+      "[aria-label='Vehicle']",
+      "[aria-label='Vehicle of Interest']",
     ]);
     return { customer, vehicle };
   });
