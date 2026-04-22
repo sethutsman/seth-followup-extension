@@ -277,28 +277,11 @@ async function scrapeBestEffort() {
     }
 
     const customer = fromSelectors([
-      "[data-testid='customer-name']",
-      ".customer-name",
-      ".customerName",
-      "[name='customer_name']",
-      "[name='customerName']",
-      "[id='customer-name']",
-      "[id='customerName']",
-      "[aria-label='Customer Name']",
-      "[aria-label='Customer']",
+      "#ContentPlaceHolder1_m_CustomerAndTaskInfo_m_CustomerInfo__CustomerName",
+      ".CustomerInfo_CustomerName",
     ]);
     const vehicle = fromSelectors([
-      "[data-testid='vehicle']",
-      "[data-testid='vehicle-name']",
-      ".vehicle-name",
-      ".vehicleName",
-      ".vehicle",
-      "[name='vehicle']",
-      "[name='vehicleName']",
-      "[id='vehicle']",
-      "[id='vehicle-name']",
-      "[aria-label='Vehicle']",
-      "[aria-label='Vehicle of Interest']",
+      "#ActiveLeadPanelWONotesAndHistory1_m_VehicleInfo",
     ]);
     return { customer, vehicle };
   });
