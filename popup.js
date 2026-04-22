@@ -239,7 +239,19 @@ async function scrapeBestEffort() {
   return execInTab(() => {
     const NAV_TAGS = new Set(["NAV", "HEADER", "ASIDE", "FOOTER"]);
 
-    // Walk up to check if el is inside a nav/header/aside
+    // Collect the top document + any same-origin iframes (VinSolutions loads content in iframes)
+    function getAllDocs() {
+      const docs = [document];
+      try {
+        for (const frame of document.querySelectorAll("iframe")) {
+          try {
+            if (frame.contentDocument) docs.push(frame.contentDocument);
+          } catch (e) { /* cross-origin, skip */ }
+        }
+      } catch (e) {}
+      return docs;
+    }
+
     function inNavArea(el) {
       let node = el;
       while (node && node !== document.body) {
@@ -251,26 +263,29 @@ async function scrapeBestEffort() {
       return false;
     }
 
-    // Only accept inputs, selects, or short text nodes that aren't nav items / anchors
     function readText(el) {
       if (!el) return "";
       if (el.tagName === "INPUT" || el.tagName === "SELECT" || el.tagName === "TEXTAREA") {
         return (el.value || "").trim();
       }
-      if (el.tagName === "A") return ""; // skip nav links
+      if (el.tagName === "A") return "";
       const text = el.textContent?.trim() || "";
-      // Skip anything that looks like a nav label (very long or contains slashes/pipes)
-      if (text.length > 60 || /[|/\\]/.test(text)) return "";
+      if (text.length > 80 || /[|\\]/.test(text)) return "";
       return text;
     }
 
     function fromSelectors(selectors) {
+      const allDocs = getAllDocs();
       for (const sel of selectors) {
-        const all = [...document.querySelectorAll(sel)];
-        for (const el of all) {
-          if (inNavArea(el)) continue;
-          const value = readText(el);
-          if (value) return value;
+        for (const doc of allDocs) {
+          try {
+            const all = [...doc.querySelectorAll(sel)];
+            for (const el of all) {
+              if (inNavArea(el)) continue;
+              const value = readText(el);
+              if (value) return value;
+            }
+          } catch (e) {}
         }
       }
       return "";
@@ -286,6 +301,8 @@ async function scrapeBestEffort() {
     const trade = fromSelectors([
       "#TradeIn1BasicInfo",
     ]);
+
+    console.log("[AutoFill]", { customer, vehicle, trade, iframes: document.querySelectorAll("iframe").length });
     return { customer, vehicle, trade };
   });
 }
