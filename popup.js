@@ -283,7 +283,10 @@ async function scrapeBestEffort() {
     const vehicle = fromSelectors([
       "#ActiveLeadPanelWONotesAndHistory1_m_VehicleInfo",
     ]);
-    return { customer, vehicle };
+    const trade = fromSelectors([
+      "#TradeIn1BasicInfo",
+    ]);
+    return { customer, vehicle, trade };
   });
 }
 
@@ -506,6 +509,7 @@ document.addEventListener("click", async (e) => {
       const data = await scrapeBestEffort();
       if (data?.customer && !$("customer").value.trim()) $("customer").value = data.customer;
       if (data?.vehicle && !$("vehicle").value.trim()) $("vehicle").value = data.vehicle;
+      if (data?.trade && !$("trade").value.trim()) $("trade").value = data.trade;
       await saveState();
       setStatus("Auto-fill attempted.");
     } catch (err) {
