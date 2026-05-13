@@ -10,23 +10,23 @@
     <div class="row">
       <button id="btnSelection">Use Selected Text</button>
       <button id="btnScrape">Auto-Fill (Best Effort)</button>
+      <button id="btnClear">Clear</button>
     </div>
 
     <label>Stage</label>
     <select id="stage">
-  <option value="">(optional)</option>
-  <option value="new-lead">New Lead</option>
-  <option value="appt-set">Appt Set</option>
-  <option value="appt-confirmed">Appt Confirmed</option>
-  <option value="numbers">Numbers</option>
-  <option value="unsold-show">Unsold Show</option>
-  <option value="unsold-td">Unsold TD</option>
-  <option value="unsold-numbers">Unsold Numbers</option>
-  <option value="no-show">No-Show</option>
-  <option value="delivery-scheduled">Delivery Scheduled</option>
-  <option value="sold">Sold</option>
-</select>
-
+      <option value="">(optional)</option>
+      <option value="new-lead">New Lead</option>
+      <option value="appt-set">Appt Set</option>
+      <option value="appt-confirmed">Appt Confirmed</option>
+      <option value="numbers">Numbers</option>
+      <option value="unsold-show">Unsold Show</option>
+      <option value="unsold-td">Unsold TD</option>
+      <option value="unsold-numbers">Unsold Numbers</option>
+      <option value="no-show">No-Show</option>
+      <option value="delivery-scheduled">Delivery Scheduled</option>
+      <option value="sold">Sold</option>
+    </select>
 
     <label>Customer (optional)</label>
     <input id="customer" placeholder="John" />
@@ -52,8 +52,8 @@
     <label>Days since last contact (optional)</label>
     <input id="days_since" type="number" min="0" step="1" placeholder="0" />
 
-    <label>Lead’s last message (optional)</label>
-    <textarea id="last_message" rows="4" placeholder="Paste the customer’s last message…"></textarea>
+    <label>Lead's last message (optional)</label>
+    <textarea id="last_message" rows="4" placeholder="Paste the customer's last message…"></textarea>
 
     <label>Last message was a question? (optional)</label>
     <select id="last_was_question">
@@ -73,69 +73,72 @@
     <label>Raw Note (optional)</label>
     <textarea id="raw_note" rows="6" placeholder="Paste notes, or use selected text…"></textarea>
 
+    <label>My Draft — rewrite this text (optional)</label>
+    <textarea id="rewrite_draft" rows="4" placeholder="Paste a message you already wrote and want polished…"></textarea>
+
     <div class="row toggles">
       <label><input type="checkbox" id="include_followup" checked> Include follow-up</label>
       <label><input type="checkbox" id="include_reminders" checked> Include reminders</label>
     </div>
 
     <div class="row">
-      <div class="row">
-  <button id="btnGenerate" class="primary">Generate</button>
-  <button id="btnCopyBest">Copy Best</button>
-</div>
+      <button id="btnGenerate" class="primary">Generate</button>
+      <button id="btnCopyBest">Copy Best</button>
+    </div>
 
-<div class="row">
-  <button id="btnCopyFollowups">Copy All Follow-ups</button>
-  <button id="btnCopyActions">Copy Reminders + Actions</button>
-</div>
+    <div class="row">
+      <button id="btnRewrite" class="rewrite">Rewrite Draft</button>
+    </div>
 
-<div class="row">
-  <button id="btnCopyAll">Copy Everything</button>
-</div>
+    <div class="row">
+      <button id="btnCopyFollowups">Copy All Follow-ups</button>
+      <button id="btnCopyActions">Copy Reminders + Actions</button>
+    </div>
 
+    <div class="row">
+      <button id="btnCopyAll">Copy Everything</button>
     </div>
 
     <div id="status" class="status"></div>
 
     <div class="sys">
-  <div class="pillRow">
-    <div class="pill"><b>Mode:</b> <span id="sys_mode">—</span></div>
-    <div class="pill"><b>Deal:</b> <span id="sys_health">—</span></div>
-  </div>
+      <div class="pillRow">
+        <div class="pill"><b>Mode:</b> <span id="sys_mode">—</span></div>
+        <div class="pill"><b>Deal:</b> <span id="sys_health">—</span></div>
+      </div>
 
-  <div class="card">
-    <div class="cardHeader">
-      <div>Tags</div>
-      <button data-copy="reasoning_tags">Copy</button>
+      <div class="card">
+        <div class="cardHeader">
+          <div>Tags</div>
+          <button data-copy="reasoning_tags">Copy</button>
+        </div>
+        <div id="reasoning_tags" class="output" contenteditable="true" spellcheck="false"></div>
+      </div>
+
+      <div class="card">
+        <div class="cardHeader">
+          <div>Next Actions</div>
+          <button data-copy="next_actions">Copy</button>
+        </div>
+        <div id="next_actions" class="output" contenteditable="true" spellcheck="false"></div>
+      </div>
+
+      <div class="card" id="ghostCard" style="display:none;">
+        <div class="cardHeader">
+          <div>Ghost Busters</div>
+          <button data-copy="ghost_busters">Copy</button>
+        </div>
+        <div id="ghost_busters" class="output" contenteditable="true" spellcheck="false"></div>
+      </div>
     </div>
-    <pre id="reasoning_tags"></pre>
-  </div>
 
-  <div class="card">
-    <div class="cardHeader">
-      <div>Next Actions</div>
-      <button data-copy="next_actions">Copy</button>
-    </div>
-    <pre id="next_actions"></pre>
-  </div>
-
-  <div class="card" id="ghostCard" style="display:none;">
-    <div class="cardHeader">
-      <div>Ghost Busters</div>
-      <button data-copy="ghost_busters">Copy</button>
-    </div>
-    <pre id="ghost_busters"></pre>
-  </div>
-</div>
-
-    
     <div class="results">
       <div class="card">
         <div class="cardHeader">
           <div>Best</div>
           <button data-copy="followup_best">Copy</button>
         </div>
-        <pre id="followup_best"></pre>
+        <div id="followup_best" class="output" contenteditable="true" spellcheck="false"></div>
       </div>
 
       <div class="card">
@@ -143,7 +146,7 @@
           <div>Soft</div>
           <button data-copy="followup_soft">Copy</button>
         </div>
-        <pre id="followup_soft"></pre>
+        <div id="followup_soft" class="output" contenteditable="true" spellcheck="false"></div>
       </div>
 
       <div class="card">
@@ -151,7 +154,7 @@
           <div>Neutral</div>
           <button data-copy="followup_neutral">Copy</button>
         </div>
-        <pre id="followup_neutral"></pre>
+        <div id="followup_neutral" class="output" contenteditable="true" spellcheck="false"></div>
       </div>
 
       <div class="card">
@@ -159,7 +162,7 @@
           <div>Assertive</div>
           <button data-copy="followup_assertive">Copy</button>
         </div>
-        <pre id="followup_assertive"></pre>
+        <div id="followup_assertive" class="output" contenteditable="true" spellcheck="false"></div>
       </div>
 
       <div class="card">
@@ -167,7 +170,7 @@
           <div>Reminders</div>
           <button data-copy="reminders">Copy</button>
         </div>
-        <pre id="reminders"></pre>
+        <div id="reminders" class="output" contenteditable="true" spellcheck="false"></div>
       </div>
     </div>
   </div>

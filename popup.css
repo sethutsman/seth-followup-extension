@@ -28,11 +28,35 @@ input, textarea, select { width: 100%; box-sizing: border-box; padding: 6px; mar
 .row.toggles { justify-content: space-between; }
 button { padding: 6px 10px; cursor: pointer; }
 button.primary { flex: 1; font-weight: bold; }
+button.rewrite { flex: 1; background: #e8f0fe; border: 1px solid #aac4f5; color: #1a4fa8; font-weight: bold; }
+button.rewrite:hover { background: #d0e3ff; }
 .status { margin-top: 8px; font-size: 12px; min-height: 16px; }
 .results { margin-top: 10px; display: grid; gap: 10px; }
 .card { border: 1px solid #ddd; border-radius: 6px; padding: 8px; }
 .cardHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-pre { white-space: pre-wrap; word-wrap: break-word; margin: 0; font-size: 12px; }
+
+/* Editable output areas */
+.output {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+  font-size: 12px;
+  font-family: monospace;
+  min-height: 1em;
+  outline: none;
+  cursor: text;
+  line-height: 1.4;
+}
+.output:empty::before {
+  content: attr(data-placeholder);
+  color: #bbb;
+  pointer-events: none;
+}
+.output:focus {
+  background: #fafcff;
+  border-radius: 3px;
+}
+
 .sys { margin-top: 10px; display: grid; gap: 10px; }
 .pillRow { display: flex; gap: 8px; }
 .pill { border: 1px solid #ddd; border-radius: 999px; padding: 6px 10px; font-size: 12px; }

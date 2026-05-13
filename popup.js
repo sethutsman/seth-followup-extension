@@ -28,6 +28,20 @@ async function copyText(text) {
   await navigator.clipboard.writeText(text);
 }
 
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+}
+
+function flashCopy(btn) {
+  const original = btn.textContent;
+  btn.textContent = "Copied!";
+  setTimeout(() => { btn.textContent = original; }, 1200);
+}
+
 function normalizeReminders(reminders) {
   if (!Array.isArray(reminders)) return "";
   return reminders.map(r => `- ${String(r)}`).join("\n");
@@ -56,7 +70,6 @@ function normalizeGhost(ghost) {
 function blankOutputs() {
   OUTPUT_FIELDS.forEach((id) => setText(id, ""));
 
-  // system mode fields
   setText("sys_mode", "—");
   setText("sys_health", "—");
   setText("reasoning_tags", "");
@@ -66,16 +79,13 @@ function blankOutputs() {
   if (ghostCard) ghostCard.style.display = "none";
 }
 
-
 function setOutputs(out) {
-  // existing
   setText("followup_best", out.followup_best || "");
   setText("followup_soft", out.followup_soft || "");
   setText("followup_neutral", out.followup_neutral || "");
   setText("followup_assertive", out.followup_assertive || "");
   setText("reminders", normalizeReminders(out.reminders || []));
 
-  // system mode
   setText("sys_mode", out.mode || "—");
   setText("sys_health", out.deal_health || "—");
   setText("reasoning_tags", normalizeTags(out.reasoning_tags || []));
@@ -110,6 +120,7 @@ function getStateFromUI() {
     tone: $("tone").value || "",
 
     raw_note: $("raw_note").value || "",
+    rewrite_draft: $("rewrite_draft").value || "",
 
     include_followup: $("include_followup").checked,
     include_reminders: $("include_reminders").checked,
@@ -131,7 +142,6 @@ function getStateFromUI() {
   };
 }
 
-
 function applyStateToUI(state) {
   if (!state) return;
 
@@ -150,6 +160,7 @@ function applyStateToUI(state) {
   $("last_was_question").value = state.last_was_question ?? "";
   $("tone").value = state.tone ?? "";
   $("raw_note").value = state.raw_note ?? "";
+  $("rewrite_draft").value = state.rewrite_draft ?? "";
 
   $("include_followup").checked = state.include_followup ?? true;
   $("include_reminders").checked = state.include_reminders ?? true;
@@ -183,17 +194,18 @@ async function loadState() {
 }
 
 function wireAutoSave() {
+  const debouncedSave = debounce(saveState, 500);
   const ids = [
     "stage","customer","vehicle",
     "lead_source","budget","timeline","trade","objections",
     "days_since","last_message","last_was_question","tone","raw_note",
-    "include_followup","include_reminders"
+    "rewrite_draft","include_followup","include_reminders"
   ];
   ids.forEach((id) => {
     const el = $(id);
     if (!el) return;
-    el.addEventListener("input", () => saveState());
-    el.addEventListener("change", () => saveState());
+    el.addEventListener("input", debouncedSave);
+    el.addEventListener("change", debouncedSave);
   });
 }
 
@@ -234,7 +246,7 @@ async function getSelectionText() {
   });
 }
 
-// Best-effort scrape (you'll likely refine selectors for VinSolutions later)
+// Best-effort scrape for VinSolutions
 async function scrapeBestEffort() {
   const tab = await getActiveTab();
   if (!tab?.id) throw new Error("No active tab.");
@@ -294,7 +306,6 @@ async function scrapeBestEffort() {
     },
   });
 
-  // Merge: take first non-empty value found across all frames
   const merged = { customer: "", vehicle: "", trade: "" };
   for (const r of (results || [])) {
     if (!r?.result) continue;
@@ -307,7 +318,6 @@ async function scrapeBestEffort() {
 
 // ---------- worker response normalization ----------
 function normalizeWorkerResponse(json) {
-  // Preferred shape: followup_* keys
   if (json && (json.followup_best || json.followup_soft || json.followup_neutral || json.followup_assertive)) {
     return {
       followup_best: json.followup_best || "",
@@ -315,12 +325,20 @@ function normalizeWorkerResponse(json) {
       followup_neutral: json.followup_neutral || "",
       followup_assertive: json.followup_assertive || "",
       reminders: Array.isArray(json.reminders) ? json.reminders : [],
+      mode: json.mode || "",
+      deal_health: json.deal_health || "",
+      reasoning_tags: Array.isArray(json.reasoning_tags) ? json.reasoning_tags : [],
+      next_actions: Array.isArray(json.next_actions) ? json.next_actions : [],
+      ghost_busters: json.ghost_busters || null,
     };
   }
 
   // Legacy: {mode, options:[{label,text}]}
   if (json && Array.isArray(json.options)) {
-    const out = { followup_soft:"", followup_neutral:"", followup_assertive:"", followup_best:"", reminders:[] };
+    const out = {
+      followup_soft: "", followup_neutral: "", followup_assertive: "", followup_best: "",
+      reminders: [], mode: "", deal_health: "", reasoning_tags: [], next_actions: [], ghost_busters: null,
+    };
     for (const opt of json.options) {
       const label = String(opt?.label || "").toLowerCase();
       const t = String(opt?.text || "").trim();
@@ -338,52 +356,50 @@ function normalizeWorkerResponse(json) {
   return null;
 }
 
-// ---------- main ----------
-async function generate() {
-  setStatus("Working...");
-  blankOutputs();
-
-  const raw_note = $("raw_note").value.trim();
-  const last_message = $("last_message").value.trim();
-
-  // Require at least something to work with
-  if (!raw_note && !last_message) {
-    setStatus("Add Raw Note OR Lead’s last message (one of them is required).");
-    return;
-  }
-
-  const payload = {
-    // Back-compat: always send raw_note, derived from last_message if needed
-    raw_note: raw_note || last_message,
-
-    stage: $("stage").value.trim(),
-    customer: $("customer").value.trim(),
-    vehicle: $("vehicle").value.trim(),
-
-    lead_source: $("lead_source").value.trim(),
-    budget: $("budget").value.trim(),
-    timeline: $("timeline").value.trim(),
-    trade: $("trade").value.trim(),
-    objections: $("objections").value.trim(),
-
-    last_message: last_message,
-    days_since: Number($("days_since").value || 0),
-    last_was_question: $("last_was_question").value.trim(),
-    tone: $("tone").value.trim(),
-
-    include_followup: $("include_followup").checked,
-    include_reminders: $("include_reminders").checked,
-  };
-
-  console.log("PAYLOAD", payload);
-
+// ---------- fetch with timeout ----------
+async function callWorker(payload) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
   try {
     const res = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
+    return res;
+  } catch (e) {
+    clearTimeout(timeoutId);
+    throw e;
+  }
+}
 
+// ---------- loading animation ----------
+let _loadingTimer = null;
+
+function startLoadingStatus() {
+  let dots = 1;
+  setStatus("Working.");
+  _loadingTimer = setInterval(() => {
+    dots = (dots % 3) + 1;
+    setStatus("Working" + ".".repeat(dots));
+  }, 400);
+}
+
+function stopLoadingStatus() {
+  clearInterval(_loadingTimer);
+  _loadingTimer = null;
+}
+
+// ---------- shared fetch + display logic ----------
+async function runGenerate(payload, triggerBtn) {
+  triggerBtn.disabled = true;
+  startLoadingStatus();
+  blankOutputs();
+
+  try {
+    const res = await callWorker(payload);
     const text = await res.text();
     console.log("STATUS", res.status);
     console.log("RAW RESPONSE", text);
@@ -412,9 +428,68 @@ async function generate() {
     setStatus("Done.");
   } catch (e) {
     console.error(e);
-    setStatus("Network error. Check console.");
+    setStatus(e.name === "AbortError" ? "Timed out after 15s. Check your connection." : "Network error. Check console.");
+  } finally {
+    stopLoadingStatus();
+    triggerBtn.disabled = false;
   }
 }
+
+// ---------- main generate ----------
+async function generate() {
+  const raw_note = $("raw_note").value.trim();
+  const last_message = $("last_message").value.trim();
+
+  if (!raw_note && !last_message) {
+    setStatus("Add Raw Note OR Lead's last message (one of them is required).");
+    return;
+  }
+
+  const payload = {
+    raw_note: raw_note || last_message,
+    stage: $("stage").value.trim(),
+    customer: $("customer").value.trim(),
+    vehicle: $("vehicle").value.trim(),
+    lead_source: $("lead_source").value.trim(),
+    budget: $("budget").value.trim(),
+    timeline: $("timeline").value.trim(),
+    trade: $("trade").value.trim(),
+    objections: $("objections").value.trim(),
+    last_message,
+    days_since: Number($("days_since").value || 0),
+    last_was_question: $("last_was_question").value.trim(),
+    tone: $("tone").value.trim(),
+    include_followup: $("include_followup").checked,
+    include_reminders: $("include_reminders").checked,
+  };
+
+  console.log("PAYLOAD", payload);
+  await runGenerate(payload, $("btnGenerate"));
+}
+
+// ---------- rewrite draft ----------
+async function generateRewrite() {
+  const draft = $("rewrite_draft").value.trim();
+  if (!draft) {
+    setStatus("Add your draft text in the 'My Draft' field first.");
+    return;
+  }
+
+  const payload = {
+    rewrite_draft: draft,
+    customer: $("customer").value.trim(),
+    vehicle: $("vehicle").value.trim(),
+    stage: $("stage").value.trim(),
+    tone: $("tone").value.trim(),
+    include_followup: $("include_followup").checked,
+    include_reminders: $("include_reminders").checked,
+  };
+
+  console.log("REWRITE PAYLOAD", payload);
+  await runGenerate(payload, $("btnRewrite"));
+}
+
+// ---------- copy pack builders ----------
 function buildFollowupsPack() {
   const best = $("followup_best").textContent.trim();
   const soft = $("followup_soft").textContent.trim();
@@ -440,7 +515,6 @@ function buildActionsPack() {
   if (reminders) parts.push(`\nREMINDERS:\n${reminders}`);
   if (nextActions) parts.push(`\nNEXT ACTIONS:\n${nextActions}`);
 
-  // Ghost busters only if visible + present
   const ghostCard = document.getElementById("ghostCard");
   const ghost = $("ghost_busters").textContent.trim();
   if (ghostCard && ghostCard.style.display !== "none" && ghost) {
@@ -470,41 +544,73 @@ function buildEverythingPack() {
 }
 
 // ---------- wiring ----------
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.ctrlKey) {
+    e.preventDefault();
+    generate();
+  }
+});
+
 document.addEventListener("click", async (e) => {
   const t = e.target;
 
   if (t?.id === "btnGenerate") {
     await generate();
+    return;
+  }
+
+  if (t?.id === "btnRewrite") {
+    await generateRewrite();
+    return;
+  }
+
+  if (t?.id === "btnClear") {
+    if (!confirm("Clear all fields?")) return;
+    ["stage","customer","vehicle","lead_source","budget","timeline","trade",
+     "objections","days_since","last_message","last_was_question","tone",
+     "raw_note","rewrite_draft"].forEach(id => {
+      const el = $(id);
+      if (el) el.value = "";
+    });
+    $("include_followup").checked = true;
+    $("include_reminders").checked = true;
+    blankOutputs();
+    await saveState();
+    setStatus("Cleared.");
+    return;
   }
 
   if (t?.id === "btnCopyBest") {
     const best = $("followup_best").textContent.trim();
     if (!best) return setStatus("Nothing to copy.");
     await copyText(best);
-    setStatus("Copied Best.");
+    flashCopy(t);
+    return;
   }
 
-    if (t?.id === "btnCopyFollowups") {
+  if (t?.id === "btnCopyFollowups") {
     const pack = buildFollowupsPack();
     if (!pack) return setStatus("No follow-ups to copy yet.");
     await copyText(pack);
-    setStatus("Copied all follow-ups.");
+    flashCopy(t);
+    return;
   }
 
   if (t?.id === "btnCopyActions") {
     const pack = buildActionsPack();
     if (!pack) return setStatus("No reminders/actions to copy yet.");
     await copyText(pack);
-    setStatus("Copied reminders + actions.");
+    flashCopy(t);
+    return;
   }
 
   if (t?.id === "btnCopyAll") {
     const pack = buildEverythingPack();
     if (!pack) return setStatus("Nothing to copy yet.");
     await copyText(pack);
-    setStatus("Copied everything.");
+    flashCopy(t);
+    return;
   }
-
 
   if (t?.id === "btnSelection") {
     try {
@@ -517,6 +623,7 @@ document.addEventListener("click", async (e) => {
       console.error(err);
       setStatus("Selection failed (check permissions / active tab).");
     }
+    return;
   }
 
   if (t?.id === "btnScrape") {
@@ -531,23 +638,22 @@ document.addEventListener("click", async (e) => {
       console.error(err);
       setStatus("Auto-fill failed (needs selectors + permissions).");
     }
+    return;
   }
 
   const key = t?.dataset?.copy;
   if (key) {
     let text = "";
-  
     if (key === "reminders") text = $("reminders").textContent.trim();
     else if (key === "next_actions") text = $("next_actions").textContent.trim();
     else if (key === "reasoning_tags") text = $("reasoning_tags").textContent.trim();
     else if (key === "ghost_busters") text = $("ghost_busters").textContent.trim();
     else text = $(key)?.textContent?.trim() || "";
-  
+
     if (!text) return setStatus("Nothing to copy.");
     await copyText(text);
-    setStatus(`Copied ${key}.`);
-}
-
+    flashCopy(t);
+  }
 });
 
 // init
